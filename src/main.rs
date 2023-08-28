@@ -1,5 +1,5 @@
 mod camera;
-mod lib;
+mod api;
 use camera::*;
 fn main() {
 

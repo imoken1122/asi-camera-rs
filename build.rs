@@ -10,6 +10,7 @@ fn generate_binding(){
     println!("cargo:rustc-link-search={}",path.unwrap().display());
     //println!("cargo:rustc-link-arg=-Wl,-rpath,{}", libpath);
 
+    println!("cargo:rustc-env=DYLD_LIBRARY_PATH=./libasi/vendor/mac");
     // Tell cargo to tell rustc to link the system bzip2
     // shared library.
     println!("cargo:rustc-link-lib=ASICamera2");

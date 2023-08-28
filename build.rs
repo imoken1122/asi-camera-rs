@@ -4,6 +4,18 @@ use std::path::PathBuf;
 use std::env;
 
 fn generate_binding(){
+
+    let path = std::fs::canonicalize("./libasi/vendor/mac");
+    // Tell cargo to look for shared libraries in the specified directory
+    println!("cargo:rustc-link-search={}",path.unwrap().display());
+    //println!("cargo:rustc-link-arg=-Wl,-rpath,{}", libpath);
+
+    // Tell cargo to tell rustc to link the system bzip2
+    // shared library.
+    println!("cargo:rustc-link-lib=ASICamera2");
+
+    // Tell cargo to invalidate the built crate whenever the wrapper changes
+    println!("cargo:rerun-if-changed=./libasi/include/ASICamera2.h");
     let bindings = bindgen::Builder::default()
             .header("./libasi/include/ASICamera2.h")
             .parse_callbacks(Box::new(bindgen::CargoCallbacks))

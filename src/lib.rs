@@ -5,8 +5,8 @@
 #![allow(improper_ctypes)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-mod camera;
-use log::error;
+
+//use log::error;
 /// Structure to hold information about capabilities of a camera control.
 pub type ASIControlCaps = _ASI_CONTROL_CAPS;
 
@@ -29,30 +29,30 @@ fn check_error_code(code: i32) {
         // Success
         0 => (),
         // No camera connected or index value out of boundary
-        1 => error!("ASI_ERROR_INVALID_INDEX"),
-        2 => error!("ASI_ERROR_INVALID_ID"),
-        3 => error!("ASI_ERROR_INVALID_CONTROL_TYPE"),
+        1 => panic!("ASI_ERROR_INVALID_INDEX"),
+        2 => panic!("ASI_ERROR_INVALID_ID"),
+        3 => panic!("ASI_ERROR_INVALID_CONTROL_TYPE"),
         // Camera didn't open
-        4 => error!("ASI_ERROR_CAMERA_CLOSED"),
+        4 => panic!("ASI_ERROR_CAMERA_CLOSED"),
         // Failed to find the camera, maybe the camera has been removed
-        5 => error!("ASI_ERROR_CAMERA_REMOVED"),
+        5 => panic!("ASI_ERROR_CAMERA_REMOVED"),
         // Cannot find the path of the file
-        6 => error!("ASI_ERROR_INVALID_PATH"),
-        7 => error!("ASI_ERROR_INVALID_FILEFORMAT"),
+        6 => panic!("ASI_ERROR_INVALID_PATH"),
+        7 => panic!("ASI_ERROR_INVALID_FILEFORMAT"),
         // Wrong video format size
-        8 => error!("ASI_ERROR_INVALID_SIZE"),
-        9 => error!("ASI_ERROR_INVALID_IMGTYPE"), //unsupported image formate
-        10 => error!("ASI_ERROR_OUTOF_BOUNDARY"), //the startpos is out of boundary
+        8 => panic!("ASI_ERROR_INVALID_SIZE"),
+        9 => panic!("ASI_ERROR_INVALID_IMGTYPE"), //unsupported image formate
+        10 => panic!("ASI_ERROR_OUTOF_BOUNDARY"), //the startpos is out of boundary
         // Communication timeout
-        11 => error!("ASI_ERROR_TIMEOUT"),
-        12 => error!("ASI_ERROR_INVALID_SEQUENCE"), //stop capture first!
-        13 => error!("ASI_ERROR_BUFFER_TOO_SMALL"), //buffer size is not big enough
-        14 => error!("ASI_ERROR_VIDEO_MODE_ACTIVE"),
-        15 => error!("ASI_ERROR_EXPOSURE_IN_PROGRESS"),
-        16 => error!("ASI_ERROR_GENERAL_ERROR"), //general error, eg: value is out of valid range
-        17 => error!("ASI_ERROR_INVALID_MODE"),  //the current mode is wrong
-        18 => error!("ASI_ERROR_END"),
-        e => error!("unknown error {}", e),
+        11 => panic!("ASI_ERROR_TIMEOUT"),
+        12 => panic!("ASI_ERROR_INVALID_SEQUENCE"), //stop capture first!
+        13 => panic!("ASI_ERROR_BUFFER_TOO_SMALL"), //buffer size is not big enough
+        14 => panic!("ASI_ERROR_VIDEO_MODE_ACTIVE"),
+        15 => panic!("ASI_ERROR_EXPOSURE_IN_PROGRESS"),
+        16 => panic!("ASI_ERROR_GENERAL_ERROR"), //general error, eg: value is out of valid range
+        17 => panic!("ASI_ERROR_INVALID_MODE"),  //the current mode is wrong
+        18 => panic!("ASI_ERROR_END"),
+        e => panic!("unknown error {}", e),
     }
 }
 

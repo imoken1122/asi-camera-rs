@@ -1,5 +1,8 @@
 mod camera;
-
+mod lib;
+use camera::*;
 fn main() {
-    println!("OUT_DIR: {:?}", std::env::var("OUT_DIR"));
+
+        let camera = Camera{};
+        camera.init();
 }

@@ -1,8 +1,7 @@
 mod camera;
-mod api;
+mod libasi;
 use camera::*;
 fn main() {
 
-        let camera = Camera{};
-        camera.init();
+        let camera = Camera::init(0);
 }

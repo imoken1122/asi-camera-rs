@@ -28,5 +28,8 @@ fn generate_binding(){
             .expect("Couldn't write bindings!");
 }
 fn main(){
+    //TODO
+    //  support each OS
+    //  if already exist bindings.rs, to skip generate_bindng()
     generate_binding()
 }

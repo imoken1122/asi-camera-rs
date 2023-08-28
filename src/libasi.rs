@@ -4,19 +4,20 @@
 #![allow(non_snake_case)]
 //#![allow(improper_ctypes)]
 
+use crate::camera;
+
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 //use log::error;
-/// Structure to hold information about capabilities of a camera control.
+pub type ASICameraInfo = _ASI_CAMERA_INFO;
 pub type ASIControlCaps = _ASI_CONTROL_CAPS;
 
-pub type ASICameraInfo = _ASI_CAMERA_INFO;
+/// Structure to hold information about capabilities of a camera control.
+pub type ASIBayerPattern = ASI_BAYER_PATTERN ; 
 pub type ASIBool= i32;
-
 ///data format of image, such as 8bit, 16bit ...
 pub type ASIImgType =  ASI_IMG_TYPE;
-
 ///The ASI_CAMERA_MODE enum defines different modes for automatic capturing in an ASI camera.
 ///These modes determine how the camera starts capturing images based on specific triggers or conditions, making it versatile for applications like astrophotography, motion detection, scientific experiments, and surveillance.
 pub type ASICameraMode=  ASI_CAMERA_MODE;
@@ -57,6 +58,30 @@ fn check_error_code(code: i32) {
     }
 }
 
+impl _ASI_CAMERA_INFO {
+    pub fn new() -> Self{
+        Self{
+            Name: [0; 64],
+            CameraID: 0,
+            MaxHeight: 0,
+            MaxWidth: 0,
+            IsColorCam: 0,
+            BayerPattern: 0,
+            SupportedBins: [0; 16],
+            SupportedVideoFormat: [0; 8],
+            PixelSize: 0.0,
+            MechanicalShutter: 0,
+            ST4Port: 0,
+            IsCoolerCam: 0,
+            IsUSB3Host: 0,
+            IsUSB3Camera: 0,
+            ElecPerADU: 0.0,
+            BitDepth: 0,
+            IsTriggerCam: 0,
+            Unused: [0; 16],
+        }
+    }
+}
 
 /// This should be the first API to be called.
 /// Get the number of connected ASI cameras.
@@ -161,7 +186,6 @@ pub fn get_ctl_caps(camera_id : i32, ctl_idx: i32, ctl_caps : *mut ASIControlCap
 /// - `ASI_ERROR_INVALID_INDEX`: No camera connected, or index value is out of boundary.
 
 pub fn get_camera_prop( camera_info : *mut ASICameraInfo, camera_idx : i32){
-
     check_error_code(unsafe{ASIGetCameraProperty(camera_info, camera_idx)})
 }
 
@@ -290,7 +314,7 @@ pub fn stop_video_capture(camera_id : i32){
 ///
 /// # Parameters:
 /// - `camera_id` (`i32`): This is obtained from the camera property using the `ASIGetCameraProperty` API.
-/// - `is_dark` (`ASI_BOOL`): Indicates whether it's a dark frame if there is a mechanical shutter on the camera. Otherwise, it's useless.
+/// - `is_dark` (`ASIBool`): Indicates whether it's a dark frame if there is a mechanical shutter on the camera. Otherwise, it's useless.
 ///
 /// # Returns:
 /// - `ASI_SUCCESS`: Operation is successful.
@@ -427,7 +451,7 @@ pub fn disable_dark_subtract(camera_id : i32, ){
 /// - `camera_id` (`int`): This is obtained from the camera property using the `ASIGetCameraProperty` API.
 /// - `control_type` (`int`): This is obtained from control property using the `ASIGetControlCaps` API.
 /// - `pl_value` (`*mut i64`): Pointer to the value where you want to save the value obtained from control.
-/// - `pb_auto` (`*mut ASI_BOOL`): Pointer to the `ASI_BOOL` type for auto value.
+/// - `pb_auto` (`*mut ASIBool`): Pointer to the `ASIBool` type for auto value.
 
 /// # Returns:
 /// - `ASI_SUCCESS`: Operation is successful.
@@ -448,7 +472,7 @@ pub fn get_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : *mut i6
 /// - `camera_id` (`int`): This is obtained from the camera property using the `ASIGetCameraProperty` API.
 /// - `control_type` (`int`): This is obtained from control property using the `ASIGetControlCaps` API.
 /// - `l_value` (`i64`): The value to set to the control.
-/// - `b_auto` (`ASI_BOOL`): Set the control to auto.
+/// - `b_auto` (`ASIBool`): Set the control to auto.
 
 /// # Returns:
 /// - `ASI_SUCCESS`: Operation is successful.

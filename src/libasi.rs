@@ -4,6 +4,8 @@
 #![allow(non_snake_case)]
 //#![allow(improper_ctypes)]
 
+use core::num;
+
 use crate::camera;
 
 
@@ -83,6 +85,25 @@ impl _ASI_CAMERA_INFO {
     }
 }
 
+impl _ASI_CONTROL_CAPS{
+    pub fn new()->Self{
+        Self{
+            Name : [0; 64],
+            Description : [0; 128],
+            MaxValue : 0,
+            MinValue : 0,
+            DefaultValue : 0,
+            IsAutoSupported : 0,
+            IsWritable : 0,
+            ControlType : 0,
+            Unused : [0; 32]
+
+        }
+
+
+    }
+}
+
 /// This should be the first API to be called.
 /// Get the number of connected ASI cameras.
 ///
@@ -149,9 +170,10 @@ pub fn init_camera( camera_id : i32  ){
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn get_num_of_controls( camera_id : i32,  num_of_ctls : *mut i32){
-
-    check_error_code(unsafe{ASIGetNumOfControls(camera_id, num_of_ctls)})
+pub fn get_num_of_controls( camera_id : i32, ) -> i32{
+    let mut num_of_ctls : i32 = 0 ; 
+    check_error_code(unsafe{ASIGetNumOfControls(camera_id, &mut num_of_ctls)});
+    num_of_ctls
 }
 
 /// Get control properties available for this camera. The camera needs to be opened first.
@@ -168,8 +190,11 @@ pub fn get_num_of_controls( camera_id : i32,  num_of_ctls : *mut i32){
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn get_ctl_caps(camera_id : i32, ctl_idx: i32, ctl_caps : *mut ASIControlCaps ){
-    check_error_code(unsafe{ASIGetControlCaps(camera_id, ctl_idx, ctl_caps)})
+pub fn get_ctl_caps(camera_id : i32, ctl_idx: i32 ) -> _ASI_CONTROL_CAPS{
+    let mut ctl_caps = _ASI_CONTROL_CAPS::new();
+    check_error_code(unsafe{ASIGetControlCaps(camera_id, ctl_idx, &mut ctl_caps)});
+    ctl_caps
+
 
 }
 
@@ -185,8 +210,12 @@ pub fn get_ctl_caps(camera_id : i32, ctl_idx: i32, ctl_caps : *mut ASIControlCap
 /// - `ASI_SUCCESS`: Operation is successful.
 /// - `ASI_ERROR_INVALID_INDEX`: No camera connected, or index value is out of boundary.
 
-pub fn get_camera_prop( camera_info : *mut ASICameraInfo, camera_idx : i32){
-    check_error_code(unsafe{ASIGetCameraProperty(camera_info, camera_idx)})
+pub fn get_camera_prop( camera_idx : i32) -> _ASI_CAMERA_INFO{
+
+    let mut camera_info = _ASI_CAMERA_INFO::new();
+
+    check_error_code(unsafe{ASIGetCameraProperty(&mut camera_info, camera_idx)});
+    camera_info
 }
 
 

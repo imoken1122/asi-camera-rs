@@ -3,5 +3,5 @@ mod libasi;
 use camera::*;
 fn main() {
 
-        let camera = Camera::init(0);
+        let camera = Camera::new(0);
 }

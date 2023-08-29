@@ -9,7 +9,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 //use log::error;
 pub type ASICameraInfo = _ASI_CAMERA_INFO;
 pub type ASIControlCaps = _ASI_CONTROL_CAPS;
-
 /// Structure to hold information about capabilities of a camera control.
 pub type ASIBayerPattern = ASI_BAYER_PATTERN ; 
 pub type ASIBool= i32;
@@ -22,6 +21,7 @@ pub type ASICameraMode=  ASI_CAMERA_MODE;
 pub type ASIExposureStatus= u32;
 pub type ASIControlType= i32;
 pub type ASIId = _ASI_ID;
+pub type ASIControlValue = i64;
 
 fn check_error_code(code: i32) {
     match code {
@@ -64,8 +64,14 @@ pub struct ROIFormat{
     pub img_type : i32
 
 }
+#[derive(Debug, Copy, Clone)]
+pub struct ControlState{
+    value : ASIControlValue,
+    is_auto : ASIBool,
+
+} 
 impl _ASI_CAMERA_INFO {
-    pub fn new() -> Self{
+    fn new() -> Self{
         Self{
             Name: [0; 64],
             CameraID: 0,
@@ -90,7 +96,7 @@ impl _ASI_CAMERA_INFO {
 }
 
 impl _ASI_CONTROL_CAPS{
-    pub fn new()->Self{
+    fn new()->Self{
         Self{
             Name : [0; 64],
             Description : [0; 128],
@@ -106,6 +112,11 @@ impl _ASI_CONTROL_CAPS{
     }
 }
 
+impl _ASI_SUPPORTED_MODE {
+    fn new( ) -> Self{
+        Self{SupportedCameraMode :[0;16]}
+    }
+}
 
 
 /// This should be the first API to be called.
@@ -259,6 +270,7 @@ pub fn _get_roi_format(camera_id :i32) -> ROIFormat{
 /// Set the Region of Interest (ROI) area before capturing.
 /// Capture must be stopped before calling this function.
 /// The width and height are the values after binning.
+/// call this function to change ROI area to the origin(center).
 /// For example, if you want to run at 640X480@BIN2, you need to set width to 640 and height to 480.
 /// Note that ASI120's data size must be a multiple of 1024, meaning width*height%1024=0.
 
@@ -517,9 +529,11 @@ pub fn _disable_dark_subtract(camera_id : i32, ){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_INVALID_CONTROL_TYPE`: Invalid control type.
 ///
-pub fn _get_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : *mut i64, is_auto : *mut ASIBool){
-
-    check_error_code(unsafe { ASIGetControlValue(camera_id, ctl_type, value, is_auto ) });
+pub fn _get_ctl_value(camera_id : i32, ctl_type : ASIControlType) -> ControlState{
+    let mut value : ASIControlValue = 0;
+    let mut is_auto : ASIBool = 0;
+    check_error_code(unsafe { ASIGetControlValue(camera_id, ctl_type, &mut value, &mut is_auto ) });
+    ControlState{value, is_auto}
 }
 
 
@@ -542,4 +556,44 @@ pub fn _get_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : *mut i
 pub fn _set_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : i64, is_auto : ASIBool){
 
     check_error_code(unsafe { ASISetControlValue(camera_id, ctl_type, value, is_auto ) });
+}
+
+/// Get the camera's current mode.
+/// This function should only be called when the `IsTriggerCam` in the `CameraInfo` is true.
+
+/// # Parameters:
+/// - `camera_id` (`int`): This is obtained from the camera property using the `ASIGetCameraProperty` API.
+/// - `mode` (`*mut ASI_CAMERA_MODE`): The pointer to the current camera mode.
+
+/// # Returns:
+/// - `ASI_SUCCESS`: Operation is successful.
+/// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
+/// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
+///
+pub fn _get_camera_mode(camera_id : i32, ) -> ASI_CAMERA_MODE {
+    let mut mode : ASICameraMode= 0;
+
+    check_error_code(unsafe { ASIGetCameraMode(camera_id,&mut mode )});
+    mode
+}
+
+
+
+/// Get the camera's supported mode.
+/// This function should only be called when the `IsTriggerCam` in the `CameraInfo` is true.
+
+/// # Parameters:
+/// - `camera_id` (`int`): This is obtained from the camera property using the `ASIGetCameraProperty` API.
+/// - `supported_mode` (`*mut ASI_SUPPORTED_MODE`): The pointer to the camera's supported mode.
+
+/// # Returns:
+/// - `ASI_SUCCESS`: Operation is successful.
+/// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
+/// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
+///
+pub fn _get_supported_mode(camera_id : i32  )->_ASI_SUPPORTED_MODE{
+    let mut sup_mode = _ASI_SUPPORTED_MODE::new(); 
+    check_error_code(unsafe { ASIGetCameraSupportMode(camera_id,&mut sup_mode)});
+    sup_mode
+
 }

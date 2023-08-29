@@ -21,6 +21,7 @@ pub trait CameraControl{
     fn close(&self,camera_id : i32);
     fn init(&self, camera_id : i32);
 
+    fn set_roi_format(&mut self, camera_idx : i32, width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType);
     // parameter control
     // camera setting control
 
@@ -36,11 +37,11 @@ pub trait SettingControl{
 impl Camera{
     pub fn new(camera_idx : i32) -> Self{
         // get number of camera
-        let num_camera= libasi::get_num_of_connected_cameras();
+        let num_camera= libasi::_get_num_of_connected_cameras();
         println!("num of camera devices {}", num_camera);
 
         // assigning connected camera_i property to camera_info
-        let camera_info = libasi::get_camera_prop( camera_idx);
+        let camera_info = libasi::_get_camera_prop( camera_idx);
         println!("{:?}",camera_info);
 
         let mut camera = Camera{
@@ -53,13 +54,19 @@ impl Camera{
         camera.open(camera_id);
         camera.init(camera_id);
 
-        let num_of_ctls = libasi::get_num_of_controls(camera_id );
+        let num_of_ctls = libasi::_get_num_of_controls(camera_id );
         for ctl_idx in 0..num_of_ctls{
-            let ctl_cpas = libasi::get_ctl_caps(camera_id, ctl_idx);
+            let ctl_cpas = libasi::_get_ctl_caps(camera_id, ctl_idx);
+            println!("{:?}", ctl_cpas );
             camera.ctl_params.insert( ctl_cpas.ControlType, ctl_cpas );
 
         }
-        println!("{:?}", camera.ctl_params);
+        let roi = libasi::_get_roi_format(camera_id);
+        println!("{:?}",roi);
+        let start_pos = libasi::_get_position_of_roi(camera_id);
+        println!("{:?}",start_pos);
+        
+        camera.close(camera_id);
         camera
 
 
@@ -68,14 +75,17 @@ impl Camera{
 }
 impl CameraControl for Camera{
     fn open(&self, camera_id : i32){
-        libasi::open_camera(camera_id);
+        libasi::_open_camera(camera_id);
     }
     fn close(&self,camera_id : i32) {
-        libasi::close_camera(camera_id);
+        libasi::_close_camera(camera_id);
         
     }
     fn init(&self, camera_id : i32) {
-        libasi::init_camera(camera_id);
+        libasi::_init_camera(camera_id);
+    }
+    fn set_roi_format(&mut self, camera_idx : i32, width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType){
+
     }
 }
 

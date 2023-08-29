@@ -4,11 +4,6 @@
 #![allow(non_snake_case)]
 //#![allow(improper_ctypes)]
 
-use core::num;
-
-use crate::camera;
-
-
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 //use log::error;
@@ -60,6 +55,15 @@ fn check_error_code(code: i32) {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct ROIFormat{
+    pub camera_id : i32,
+    pub width : i32,
+    pub height : i32,
+    pub bin : i32,
+    pub img_type : i32
+
+}
 impl _ASI_CAMERA_INFO {
     pub fn new() -> Self{
         Self{
@@ -99,10 +103,10 @@ impl _ASI_CONTROL_CAPS{
             Unused : [0; 32]
 
         }
-
-
     }
 }
+
+
 
 /// This should be the first API to be called.
 /// Get the number of connected ASI cameras.
@@ -110,7 +114,7 @@ impl _ASI_CONTROL_CAPS{
 /// # Returns:
 /// The number of connected ASI cameras. 1 means 1 camera is connected.
 ///
-pub fn get_num_of_connected_cameras() -> i32{
+pub fn _get_num_of_connected_cameras() -> i32{
     unsafe{ASIGetNumOfConnectedCameras()} 
 
 }
@@ -126,7 +130,7 @@ pub fn get_num_of_connected_cameras() -> i32{
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_CAMERA_REMOVED`: Failed to find the camera, maybe the camera has been removed.
 ///
-pub fn open_camera ( camera_id : i32  ){
+pub fn _open_camera ( camera_id : i32  ){
     check_error_code(unsafe{ASIOpenCamera(camera_id)})
 
 }
@@ -140,7 +144,7 @@ pub fn open_camera ( camera_id : i32  ){
 /// - `ASI_SUCCESS`: It will return success even if the camera is already closed.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn close_camera(camera_id: i32) {
+pub fn _close_camera(camera_id: i32) {
     check_error_code(unsafe { ASICloseCamera(camera_id) });
 }
 
@@ -154,7 +158,7 @@ pub fn close_camera(camera_id: i32) {
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn init_camera( camera_id : i32  ){
+pub fn _init_camera( camera_id : i32  ){
     check_error_code(unsafe{ASIInitCamera(camera_id)})
 }
 
@@ -170,7 +174,7 @@ pub fn init_camera( camera_id : i32  ){
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn get_num_of_controls( camera_id : i32, ) -> i32{
+pub fn _get_num_of_controls( camera_id : i32, ) -> i32{
     let mut num_of_ctls : i32 = 0 ; 
     check_error_code(unsafe{ASIGetNumOfControls(camera_id, &mut num_of_ctls)});
     num_of_ctls
@@ -190,7 +194,7 @@ pub fn get_num_of_controls( camera_id : i32, ) -> i32{
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn get_ctl_caps(camera_id : i32, ctl_idx: i32 ) -> _ASI_CONTROL_CAPS{
+pub fn _get_ctl_caps(camera_id : i32, ctl_idx: i32 ) -> _ASI_CONTROL_CAPS{
     let mut ctl_caps = _ASI_CONTROL_CAPS::new();
     check_error_code(unsafe{ASIGetControlCaps(camera_id, ctl_idx, &mut ctl_caps)});
     ctl_caps
@@ -210,7 +214,7 @@ pub fn get_ctl_caps(camera_id : i32, ctl_idx: i32 ) -> _ASI_CONTROL_CAPS{
 /// - `ASI_SUCCESS`: Operation is successful.
 /// - `ASI_ERROR_INVALID_INDEX`: No camera connected, or index value is out of boundary.
 
-pub fn get_camera_prop( camera_idx : i32) -> _ASI_CAMERA_INFO{
+pub fn _get_camera_prop( camera_idx : i32) -> _ASI_CAMERA_INFO{
 
     let mut camera_info = _ASI_CAMERA_INFO::new();
 
@@ -233,8 +237,22 @@ pub fn get_camera_prop( camera_idx : i32) -> _ASI_CAMERA_INFO{
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn get_roi_format(camera_id :i32, width: *mut i32, height : *mut i32, bin : *mut i32, img_type : *mut ASIImgType){
-    check_error_code(unsafe{ASIGetROIFormat(camera_id, width,height, bin,img_type)})
+pub fn _get_roi_format(camera_id :i32) -> ROIFormat{
+    let mut width : i32 = 0;
+    let mut height : i32= 0;
+    let mut bin :i32 = 1;
+    let mut img_type:i32= 0;
+    check_error_code(unsafe{ASIGetROIFormat(camera_id, &mut width,&mut height, &mut bin,&mut img_type)});
+
+
+    ROIFormat {
+        camera_id,
+        width,
+        height,
+        bin,
+        img_type
+    }
+
 
 }
 
@@ -258,10 +276,21 @@ pub fn get_roi_format(camera_id :i32, width: *mut i32, height : *mut i32, bin : 
 /// - `ASI_ERROR_INVALID_SIZE`: Wrong video format size.
 /// - `ASI_ERROR_INVALID_IMGTYPE`: Unsupported image format. Make sure i_width, i_height, and binning are set correctly.
 ///
-pub fn set_roi_format(camera_id : i32, width: i32, height : i32, bin : i32, img_type : ASIImgType){
+pub fn _set_roi_format(camera_id : i32, width: i32, height : i32, bin : i32, img_type : ASIImgType){
+    // TODO
+    // 
+
+
     check_error_code(unsafe{ASISetROIFormat(camera_id, width,height, bin,img_type)})
 }
+pub fn _get_position_of_roi(camera_id : i32 ) -> Vec<i32>{
 
+    let mut x =0;
+    let mut y =0;
+    check_error_code(unsafe{ASIGetStartPos(camera_id, &mut x, &mut y)});
+    vec![x,y]
+
+}
 
 /// Set the camera mode. This function only needs to be called when the `IsTriggerCam` in the `CameraInfo` is true.
 
@@ -275,7 +304,7 @@ pub fn set_roi_format(camera_id : i32, width: i32, height : i32, bin : i32, img_
 /// - `ASI_ERROR_INVALID_SEQUENCE`: The camera is in capture now; you need to stop capture first.
 /// - `ASI_ERROR_INVALID_MODE`: The mode is out of boundary, or this camera does not support this mode.
 ///
-pub fn set_camera_mode(camera_id : i32, mode : ASICameraMode){
+pub fn _set_camera_mode(camera_id : i32, mode : ASICameraMode){
 
     check_error_code(unsafe{ASISetCameraMode(camera_id, mode)})
 }
@@ -291,7 +320,7 @@ pub fn set_camera_mode(camera_id : i32, mode : ASICameraMode){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_EXPOSURE_IN_PROGRESS`: Snap mode is working; you need to stop snap first.
 ///
-pub fn start_video_capture(camera_id : i32){
+pub fn _start_video_capture(camera_id : i32){
     check_error_code(unsafe{ASIStartVideoCapture(camera_id)})
 
 }
@@ -316,7 +345,7 @@ pub fn start_video_capture(camera_id : i32){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_TIMEOUT`: No image obtained and timeout.
 ///
-pub fn get_video_data(camera_id : i32, buf : *mut u8, buf_size: i64 ,wait_ms : i32 ) {
+pub fn _get_video_data(camera_id : i32, buf : *mut u8, buf_size: i64 ,wait_ms : i32 ) {
     check_error_code(unsafe{ASIGetVideoData(camera_id, buf, buf_size, wait_ms)})
 
 }
@@ -333,7 +362,7 @@ pub fn get_video_data(camera_id : i32, buf : *mut u8, buf_size: i64 ,wait_ms : i
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn stop_video_capture(camera_id : i32){
+pub fn _stop_video_capture(camera_id : i32){
     check_error_code(unsafe{ASIStopVideoCapture(camera_id )})
 
 }
@@ -351,7 +380,7 @@ pub fn stop_video_capture(camera_id : i32){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_VIDEO_MODE_ACTIVE`: Video mode is working; you need to stop video capture first.
 ///
-pub fn start_exposure(camera_id : i32, is_dark : ASIBool ){
+pub fn _start_exposure(camera_id : i32, is_dark : ASIBool ){
     check_error_code(unsafe{ASIStartExposure(camera_id ,is_dark )})
 
 }
@@ -367,7 +396,7 @@ pub fn start_exposure(camera_id : i32, is_dark : ASIBool ){
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn stop_exposure(camera_id : i32){
+pub fn _stop_exposure(camera_id : i32){
     check_error_code(unsafe{ASIStopExposure(camera_id )})
 
 }
@@ -384,7 +413,7 @@ pub fn stop_exposure(camera_id : i32){
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn get_exp_status(camera_id : i32, exp_status : *mut ASIExposureStatus){
+pub fn _get_exp_status(camera_id : i32, exp_status : *mut ASIExposureStatus){
 
     check_error_code(unsafe{ASIGetExpStatus(camera_id, exp_status )})
 }
@@ -408,7 +437,7 @@ pub fn get_exp_status(camera_id : i32, exp_status : *mut ASIExposureStatus){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_TIMEOUT`: No image obtained and timeout.
 ///
-pub fn get_data_after_exp(camera_id : i32, buf:*mut u8, buf_size: i64){
+pub fn _get_data_after_exp(camera_id : i32, buf:*mut u8, buf_size: i64){
 
     check_error_code(unsafe{ASIGetDataAfterExp(camera_id, buf, buf_size)})
 }
@@ -416,11 +445,11 @@ pub fn get_data_after_exp(camera_id : i32, buf:*mut u8, buf_size: i64){
 
 
 
-pub fn get_id(camera_id: i32, asi_id: *mut ASIId) {
+pub fn _get_id(camera_id: i32, asi_id: *mut ASIId) {
     check_error_code(unsafe { ASIGetID(camera_id, asi_id) });
 }
 
-pub fn set_id(camera_id: i32, asi_id: ASIId) {
+pub fn _set_id(camera_id: i32, asi_id: ASIId) {
     check_error_code(unsafe { ASISetID(camera_id, asi_id) });
 }
 
@@ -447,7 +476,7 @@ pub fn set_id(camera_id: i32, asi_id: ASIId) {
 /// - `ASI_ERROR_INVALID_PATH`: Cannot find the path of the file.
 /// - `ASI_ERROR_INVALID_FILEFORMAT`: The dark file's size should be the same as the camera's max width and height.
 ///
-pub fn enable_dark_subtract(camera_id : i32, bmp_path : *mut i8){
+pub fn _enable_dark_subtract(camera_id : i32, bmp_path : *mut i8){
     
     check_error_code(unsafe { ASIEnableDarkSubtract(camera_id, bmp_path) });
 }
@@ -466,7 +495,7 @@ pub fn enable_dark_subtract(camera_id : i32, bmp_path : *mut i8){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 ///
-pub fn disable_dark_subtract(camera_id : i32, ){
+pub fn _disable_dark_subtract(camera_id : i32, ){
     
     check_error_code(unsafe { ASIDisableDarkSubtract(camera_id ) });
 }
@@ -488,7 +517,7 @@ pub fn disable_dark_subtract(camera_id : i32, ){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_INVALID_CONTROL_TYPE`: Invalid control type.
 ///
-pub fn get_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : *mut i64, is_auto : *mut ASIBool){
+pub fn _get_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : *mut i64, is_auto : *mut ASIBool){
 
     check_error_code(unsafe { ASIGetControlValue(camera_id, ctl_type, value, is_auto ) });
 }
@@ -510,7 +539,7 @@ pub fn get_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : *mut i6
 /// - `ASI_ERROR_INVALID_CONTROL_TYPE`: Invalid control type.
 /// - `ASI_ERROR_GENERAL_ERROR`: General error, e.g., value is out of valid range, or operation to camera hardware failed.
 
-pub fn set_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : i64, is_auto : ASIBool){
+pub fn _set_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : i64, is_auto : ASIBool){
 
     check_error_code(unsafe { ASISetControlValue(camera_id, ctl_type, value, is_auto ) });
 }

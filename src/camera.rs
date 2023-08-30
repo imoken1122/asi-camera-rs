@@ -7,13 +7,12 @@ use std::collections::HashMap;
 
 use crate::{libasi::{self as libasi, _ASI_CAMERA_INFO, _ASI_CONTROL_CAPS, ROIFormat, ControlState, ASIBool, _get_supported_mode, ASI_CONTROL_TYPE}, camera};
 
-type ParamType = u32;
-
+type BufSize = i64;
 #[derive(Debug,Clone)]
-pub struct ASICameras{
-    pub cameras : Vec<Camera>
+pub struct ASIDevices{
+    pub devices: Vec<Camera>
 } 
-impl ASICameras {
+impl ASIDevices {
     pub fn new() -> Self{
 
         let num_camera= libasi::_get_num_of_connected_cameras();
@@ -21,22 +20,26 @@ impl ASICameras {
         if num_camera == 0{
             panic!("no connected cameras");
         }
-        let mut cameras = vec![];
+        let mut devices= vec![];
         for i in 0..num_camera{
             let camera = Camera::new(i);
-            cameras.push(camera);
+            devices.push(camera);
         }
-        Self{cameras}
+        Self{devices }
 
     }
     pub fn get_camera(&self, camera_idx : i32) -> &Camera {
-        if self.cameras.len()> camera_idx as usize{
-            &self.cameras[camera_idx as usize]
+        if self.devices.len()> camera_idx as usize{
+            &self.devices[camera_idx as usize]
         }
         else{
             panic!("Invaild index : index out bound {}",camera_idx);
 
         }
+
+    }
+    pub fn get_num_of_connected_cameras(&self) -> i32 {
+        libasi::_get_num_of_connected_cameras()
 
     }
 }
@@ -56,8 +59,8 @@ pub trait CameraControl{
     fn init(&self );
     fn start_video_capture(&self);
     fn stop_video_capture(&self);
+    fn capture_video_frame(&self);
     fn get_video_data(&self,wait_ms:i32) -> Vec<u8>;
-    fn get_num_of_connected_cameras(&self) -> i32;
     // parameter control
     // camera setting control
 
@@ -67,13 +70,22 @@ pub trait ParameterControl{
     fn get_num_of_controls(&self,) -> i32;
     fn get_ctl_caps(&self,ctl_idx:i32) -> libasi::_ASI_CONTROL_CAPS;
     fn get_roi_format(&self )->libasi::ROIFormat;
-    fn set_roi_format(&mut self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType);
+    fn set_roi_format(&self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType);
     fn get_ctl_value(&self,  ctl_type : libasi::ASIControlType) -> libasi::ControlState;
     fn set_ctl_value(&mut self, ctl_type : libasi::ASIControlType, value : libasi::ASIControlValue, is_auto: libasi::ASIBool);
     fn get_mode(&self, )->libasi::ASICameraMode;
     fn get_supported_mode(&self,) -> libasi::_ASI_SUPPORTED_MODE;
     fn get_position_of_roi(&self) -> Vec<i32>;
 
+    fn set_img_type(&self,img_type : libasi::ASIImgType); 
+    fn get_img_type(&self) -> libasi::ASIImgType;
+    fn get_buffer_size(&self,) -> BufSize;
+
+}
+
+pub trait CameraService{
+    fn capture(&self);
+    fn snapshot(&self);
 }
 
 impl Camera{
@@ -94,9 +106,9 @@ impl Camera{
         camera.init();
 
         let num_of_ctls = camera.get_num_of_controls();
+        println!("num of control parameters {}",num_of_ctls);
         for ctl_idx in 0..num_of_ctls{
             let ctl_cpas =camera.get_ctl_caps(ctl_idx);
-            println!("{:?}", ctl_cpas );
             camera.ctlcaps_mapper.insert( ctl_cpas.ControlType, ctl_cpas);
         }
 
@@ -108,21 +120,14 @@ impl Camera{
 }
 impl CameraControl for Camera{
     fn open(&self ){
-        let camera_id = self.id;
-        libasi::_open_camera(camera_id);
+        libasi::_open_camera(self.id);
     }
     fn close(&self,) {
-        let camera_id = self.id;
-        libasi::_close_camera(camera_id);
+        libasi::_close_camera(self.id);
         
     }
     fn init(&self) {
-        let camera_id = self.id;
-        libasi::_init_camera(camera_id);
-    }
-    fn get_num_of_connected_cameras(&self) -> i32 {
-        libasi::_get_num_of_connected_cameras()
-
+        libasi::_init_camera(self.id);
     }
     fn start_video_capture(&self ) {
         libasi::_start_video_capture(self.id);
@@ -133,20 +138,13 @@ impl CameraControl for Camera{
 
 
     }
+    fn capture_video_frame(&self) {
+        
+    }
     fn get_video_data(&self, wait_ms : i32) -> Vec<u8> {
-        let roi = self.get_roi_format();
-        let mut buf_size : i64 = roi.width as i64 * roi.height as i64;
-        let img_type = roi.img_type;
         let mut buf = Vec::new();
-
-        // 2bytes per pixel
-        if img_type == libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 {
-            buf_size *= 2;
-        } 
-        // 3bytes per pixel
-        else if img_type == libasi::ASI_IMG_TYPE_ASI_IMG_RGB24{
-            buf_size *= 3;
-        }
+        let buf_size = self.get_buffer_size();
+        // buffer resize 
         buf.resize(buf_size as usize, 0);
         let mut pbuf = buf.as_mut_ptr();
         libasi::_get_video_data(self.id,pbuf,buf_size,wait_ms  );
@@ -185,7 +183,7 @@ impl ParameterControl for Camera {
         num_of_ctls
 
     }
-    fn set_roi_format(&mut self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType){
+    fn set_roi_format(&self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType){
         let camera_id = self.id;
         libasi::_set_roi_format(camera_id, width, height, bin, img_type);
     }
@@ -217,9 +215,44 @@ impl ParameterControl for Camera {
         libasi::_get_position_of_roi(self.id, &mut x, &mut y);
         vec![x,y]
     }
+    fn set_img_type(&self,img_type : libasi::ASIImgType) {
+        let roi = self.get_roi_format();
+        self.set_roi_format(roi.width, roi.height, roi.bin, img_type)
+    }
+    fn get_img_type(&self) -> libasi::ASIImgType {
+        let roi = self.get_roi_format();
+        roi.img_type
+    }
+    fn get_buffer_size(&self) -> BufSize{
+
+        let roi = self.get_roi_format();
+        let mut buf_size : i64 = roi.width as i64 * roi.height as i64;
+        let img_type = roi.img_type;
+
+        // 2bytes per pixel
+        if img_type == libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 {
+            buf_size *= 2;
+        } 
+        // 3bytes per pixel
+        else if img_type == libasi::ASI_IMG_TYPE_ASI_IMG_RGB24{
+            buf_size *= 3;
+        }
+        buf_size
+
+    }
 
 }
 
+impl CameraService for Camera{
+    fn capture(&self,) { 
+        let camera_id = self.id;
+        
+
+    }
+    fn snapshot(&self){
+
+    }
+}
 
 
 mod test{

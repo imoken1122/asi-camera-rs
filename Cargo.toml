@@ -9,7 +9,11 @@ edition = "2021"
 cross = "0.2.5"
 libc = "0.2"
 ringbuffer = "0.14.2"
+env_logger = "0.10.0"
+log = "0.4.20"
+thiserror = "1.0.47"
+image = "0.24.7"
+num="0.4.1"
 [build-dependencies]
-
-bindgen = "0.65.1"
+bindgen = "0.66.1"
 

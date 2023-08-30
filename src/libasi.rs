@@ -3,7 +3,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 //#![allow(improper_ctypes)]
-
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -19,7 +18,7 @@ pub type ASIImgType =  ASI_IMG_TYPE;
 ///These modes determine how the camera starts capturing images based on specific triggers or conditions, making it versatile for applications like astrophotography, motion detection, scientific experiments, and surveillance.
 pub type ASICameraMode=  ASI_CAMERA_MODE;
 
-pub type ASIExposureStatus= u32;
+pub type ASIExposureStatus= ASI_EXPOSURE_STATUS;
 pub type ASIControlType= i32;
 pub type ASIId = _ASI_ID;
 pub type ASIControlValue = i64;
@@ -407,7 +406,7 @@ pub fn _stop_exposure(camera_id : i32){
 /// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 ///
-pub fn _get_exp_status(camera_id : i32, exp_status : *mut ASIExposureStatus){
+pub fn _get_exposure_status(camera_id : i32, exp_status : &mut ASIExposureStatus){
 
     check_error_code(unsafe{ASIGetExpStatus(camera_id, exp_status )})
 }

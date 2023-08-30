@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 cross = "0.2.5"
 libc = "0.2"
-
+ringbuffer = "0.14.2"
 [build-dependencies]
 
 bindgen = "0.65.1"

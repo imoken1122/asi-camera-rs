@@ -64,6 +64,11 @@ pub struct ROIFormat{
     pub img_type : i32
 
 }
+impl ROIFormat { 
+    pub fn new() -> Self{
+        ROIFormat { camera_id: 0, width: 0, height: 0, bin: 0, img_type: 0 }
+    }
+}
 #[derive(Debug, Copy, Clone)]
 pub struct ControlState{
     pub value : ASIControlValue,

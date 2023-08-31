@@ -3,8 +3,8 @@ mod libasi;
 use camera::*;
 mod utils;
 fn main() {
-
-        let asi_camera = ASIDevices::new();
+        // ASIDevices object mutable variable, because camera object in ASIDevices shoud be mutable
+        let mut asi_camera = ASIDevices::new();
         let camera =  asi_camera.get_camera(0);
         for ctl in camera.ctlcaps_mapper.iter() {
                 println!("{:?} : {:?}", ctl.0, ctl.1.DefaultValue);
@@ -22,3 +22,4 @@ fn main() {
         camera.capture();
         camera.close();
 }
+

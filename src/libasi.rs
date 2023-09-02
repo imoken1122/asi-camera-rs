@@ -11,7 +11,7 @@ pub type ASICameraInfo = _ASI_CAMERA_INFO;
 pub type ASIControlCaps = _ASI_CONTROL_CAPS;
 /// Structure to hold information about capabilities of a camera control.
 pub type ASIBayerPattern = ASI_BAYER_PATTERN ; 
-pub type ASIBool= i32;
+pub type ASIBool= u32;
 ///data format of image, such as 8bit, 16bit ...
 pub type ASIImgType =  ASI_IMG_TYPE;
 ///The ASI_CAMERA_MODE enum defines different modes for automatic capturing in an ASI camera.
@@ -19,7 +19,7 @@ pub type ASIImgType =  ASI_IMG_TYPE;
 pub type ASICameraMode=  ASI_CAMERA_MODE;
 
 pub type ASIExposureStatus= ASI_EXPOSURE_STATUS;
-pub type ASIControlType= i32;
+pub type ASIControlType= u32;
 pub type ASIId = _ASI_ID;
 pub type ASIControlValue = i64;
 
@@ -379,7 +379,7 @@ pub fn _stop_video_capture(camera_id : i32){
 /// - `ASI_ERROR_VIDEO_MODE_ACTIVE`: Video mode is working; you need to stop video capture first.
 ///
 pub fn _start_exposure(camera_id : i32, is_dark : ASIBool ){
-    check_error_code(unsafe{ASIStartExposure(camera_id ,is_dark )})
+    check_error_code(unsafe{ASIStartExposure(camera_id ,is_dark as i32 )})
 
 }
 
@@ -515,8 +515,8 @@ pub fn _disable_dark_subtract(camera_id : i32, ){
 /// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
 /// - `ASI_ERROR_INVALID_CONTROL_TYPE`: Invalid control type.
 ///
-pub fn _get_ctl_value(camera_id : i32, ctl_type : ASIControlType,value :&mut ASIControlValue, is_auto : &mut ASIBool) {
-    check_error_code(unsafe { ASIGetControlValue(camera_id, ctl_type, value,  is_auto ) });
+pub fn _get_ctl_value(camera_id : i32, ctl_type : ASIControlType,value :&mut ASIControlValue, is_auto : ASIBool) {
+    check_error_code(unsafe { ASIGetControlValue(camera_id, ctl_type as i32, value,  &mut (is_auto as i32) ) });
 }
 
 
@@ -538,7 +538,7 @@ pub fn _get_ctl_value(camera_id : i32, ctl_type : ASIControlType,value :&mut ASI
 
 pub fn _set_ctl_value(camera_id : i32, ctl_type : ASIControlType, value : i64, is_auto : ASIBool){
 
-    check_error_code(unsafe { ASISetControlValue(camera_id, ctl_type, value, is_auto ) });
+    check_error_code(unsafe { ASISetControlValue(camera_id, ctl_type as i32, value, is_auto as i32 ) });
 }
 
 /// Get the camera's current mode.
@@ -575,4 +575,23 @@ pub fn _get_camera_mode(camera_id : i32, mode : &mut ASI_CAMERA_MODE ) {
 pub fn _get_supported_mode(camera_id : i32, sup_mode : &mut _ASI_SUPPORTED_MODE){
     check_error_code(unsafe { ASIGetCameraSupportMode(camera_id,sup_mode)});
 
+}
+
+/// Get the dropped frames.
+/// Dropped frames can occur when USB traffic is high or the hard disk write speed is slow.
+/// The dropped frames counter will reset to 0 after stopping capture.
+
+/// # Parameters:
+/// - `camera_id` (`int`): This is obtained from the camera property using the `ASIGetCameraProperty` API.
+/// - `pi_drop_frames` (`*mut int`): Pointer to the dropped frames count.
+
+/// # Returns:
+/// - `ASI_SUCCESS`: Operation is successful.
+/// - `ASI_ERROR_CAMERA_CLOSED`: The camera didn't open.
+/// - `ASI_ERROR_INVALID_ID`: No camera of this ID is connected, or the ID value is out of boundary.
+///
+
+pub fn _get_droped_frame(camera_id : i32, droped_frame : &mut i32) {
+
+    check_error_code(unsafe { ASIGetDroppedFrames(camera_id,droped_frame)});
 }

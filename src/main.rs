@@ -14,7 +14,7 @@ fn main() {
         let camera =  asi_camera.get_camera(0);
 
         camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
-                         camera.ctlcaps_mapper.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
+                         camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
         camera.disable_dark_subtract();
         camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
         println!("{:?}", camera.get_img_type());

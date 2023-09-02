@@ -53,7 +53,7 @@ pub struct Camera {
     pub idx: i32,
     pub id: i32,
     pub info : _ASI_CAMERA_INFO,
-    pub ctlcaps_mapper: HashMap<libasi::ASIControlType, libasi::_ASI_CONTROL_CAPS>,
+    pub ctype2caps: HashMap<libasi::ASIControlType, libasi::_ASI_CONTROL_CAPS>,
     pub roi : ROIFormat
 
 }
@@ -112,7 +112,7 @@ impl Camera{
                                     id : camera_id,
                                     idx: camera_idx, 
                                     info : camera_info,
-                                    ctlcaps_mapper: HashMap::new(),
+                                    ctype2caps: HashMap::new(),
                                     roi : libasi::ROIFormat::new()
         };
 
@@ -123,7 +123,7 @@ impl Camera{
         println!("num of control parameters {}",num_of_ctls);
         for ctl_idx in 0..num_of_ctls{
             let ctl_cpas =camera.get_ctl_caps_by_idx(ctl_idx);
-            camera.ctlcaps_mapper.insert( ctl_cpas.ControlType, ctl_cpas);
+            camera.ctype2caps.insert( ctl_cpas.ControlType, ctl_cpas);
         }
         camera.roi = camera.get_roi_format();
 
@@ -190,7 +190,7 @@ impl CameraControl for Camera{
     }
 
     fn get_ctl_caps(&self,ctl_type:libasi::ASIControlType) -> libasi::_ASI_CONTROL_CAPS {
-        *self.ctlcaps_mapper.get(&ctl_type).unwrap()
+        *self.ctype2caps.get(&ctl_type).unwrap()
     }
     fn get_num_of_controls(&self,) ->i32{
 
@@ -449,12 +449,12 @@ mod test{
         env_logger::init(); 
         let mut asi_camera = ASIDevices::new();
         let camera =  asi_camera.get_camera(0);
-        for ctl in camera.ctlcaps_mapper.iter() {
+        for ctl in camera.ctype2caps.iter() {
                 println!("{:?} : {:?}", ctl.0, ctl.1.DefaultValue);
         }
 
         camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
-                         camera.ctlcaps_mapper.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
+                         camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
         camera.disable_dark_subtract();
         camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RAW8);
         println!("{:?}", camera.get_img_type());
@@ -473,7 +473,7 @@ mod test{
         let camera =  asi_camera.get_camera(0);
 
         camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
-                         camera.ctlcaps_mapper.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
+                         camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
         camera.disable_dark_subtract();
         camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
         println!("{:?}", camera.get_img_type());

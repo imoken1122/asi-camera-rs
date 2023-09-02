@@ -43,7 +43,7 @@ fn check_error_code(code: i32) {
         9 => panic!("ASI_ERROR_INVALID_IMGTYPE"), //unsupported image formate
         10 => panic!("ASI_ERROR_OUTOF_BOUNDARY"), //the startpos is out of boundary
         // Communication timeout
-        11 => panic!("ASI_ERROR_TIMEOUT"),
+        11 => error!("ASI_ERROR_TIMEOUT"),
         12 => panic!("ASI_ERROR_INVALID_SEQUENCE"), //stop capture first!
         13 => panic!("ASI_ERROR_BUFFER_TOO_SMALL"), //buffer size is not big enough
         14 => panic!("ASI_ERROR_VIDEO_MODE_ACTIVE"),

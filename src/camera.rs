@@ -2,15 +2,11 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-use std::time::{Duration, Instant};
 
 
-extern crate env_logger;
-use itertools;
 use num;
-use itertools::zip;
-use log::{error, warn, info, debug};
 use crate::utils;
+
 use image;
 use image::DynamicImage;
 use core::panic;
@@ -26,7 +22,7 @@ pub struct ASIDevices{
 } 
 impl ASIDevices {
     pub fn new() ->  Self{
-
+        
         let num_camera= libasi::_get_num_of_connected_cameras();
         println!("num of camera devices {}", num_camera);
         if num_camera == 0{
@@ -87,17 +83,22 @@ pub trait CameraControl{
 
     fn set_img_type(&mut self,img_type : libasi::ASIImgType); 
     fn get_img_type(&self) -> libasi::ASIImgType;
-    fn get_buffer_size(&self,) -> BufSize;
     fn get_dropeed_frame(&self,)->i32;
+    fn get_video_data(&self,pbuf : Option<*mut u8>, wait_ms:i32) -> Option<BufType>; 
+    fn get_data_after_exposure(&self)->BufType;
+
 }
 
 pub trait CameraService{
-    fn capture(&self );
-    fn capture_video_frame(&self,ctl_types: Vec<libasi::ASIControlType>);
-    fn get_video_data(&self,wait_ms:i32) ->BufType; 
-    fn get_data_after_exposure(&self)->BufType;
+    fn snapshot(&self );
+    fn capture_video_frame(&self, auto_adjust_ctls: Option<Vec<libasi::ASIControlType>>);
     fn auto_adjust_ctl_value(&self,ctl_type: libasi::ASIControlType) ;
+}
+pub trait ImageProcessor{
+    fn save_img(&self,dyn_img: DynamicImage , extention : &str);
+    fn create_buffer(&self, buf_size:BufSize) -> BufType;
     fn buf_to_img(&self,buffer:BufType, img_type : libasi::ASIImgType) -> DynamicImage;
+    fn get_buffer_size(&self,) -> BufSize;
 }
 
 impl Camera{
@@ -238,32 +239,48 @@ impl CameraControl for Camera{
         let roi = self.get_roi_format();
         roi.img_type
     }
-    fn get_buffer_size(&self) -> BufSize{
-
-        let roi = self.get_roi_format();
-        let mut buf_size : i64 = roi.width as i64 * roi.height as i64;
-
-        buf_size = match roi.img_type {
-            libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 => buf_size * 2,
-            libasi::ASI_IMG_TYPE_ASI_IMG_RGB24 => buf_size * 3,
-             _ => buf_size
-
-            };
-        buf_size
-
-    }
+   
     fn get_dropeed_frame(&self,)->i32 {
         let mut droped_frame  : i32 = 0;
         libasi::_get_droped_frame(self.id, &mut droped_frame);
         droped_frame
     }
 
+
+    /// When a pointer to buffer is received, the video frame is written with the pointer at the beginning
+    /// and the return value is None. Conversely, if the buffern pointer is None, the video frame is returned.
+    /// 
+    fn get_video_data(&self,pbuf : Option<*mut u8> ,wait_ms : i32) -> Option<BufType >{
+
+        let buf_size = self.get_buffer_size();
+        match pbuf {
+            Some(pbuf) => {
+                libasi::_get_video_data(self.id,pbuf,buf_size,wait_ms  );
+                None
+
+            }
+            None => {
+                let mut buf = self.create_buffer(buf_size);
+                let mut pbuf = buf.as_mut_ptr();
+                libasi::_get_video_data(self.id,pbuf,buf_size,wait_ms  );
+                Some(buf)
+
+            }
+
+        }
+    }
+    fn get_data_after_exposure(&self)->BufType {
+        
+        let buf_size = self.get_buffer_size();
+        let mut buf = self.create_buffer(buf_size);
+        let mut pbuf = buf.as_mut_ptr();
+        libasi::_get_data_after_exp(self.id,pbuf,buf_size);
+        buf
+    }
 }
 
 impl CameraService for Camera{
-    fn capture(&self ) { 
-        let camera_id = self.id;
-
+    fn snapshot(&self ) { 
         // starting exposure
         self.start_exposure(0);
 
@@ -282,54 +299,60 @@ impl CameraService for Camera{
         // Acquire data after exposure
         let buf = self.get_data_after_exposure();
 
+        // convert buffer to image format
        let img_type = self.get_img_type();
         let dyn_img = self.buf_to_img(buf, img_type);
-        utils::save_img(dyn_img, "png");
+
+        // save image
+        self.save_img(dyn_img, "png");
 
         self.stop_exposure();
 
     }
-    fn capture_video_frame(&self,ctl_types: Vec<libasi::ASIControlType>) {
-
+    /// auto_adjust_ctls : 
+    fn capture_video_frame(&self,auto_adjust_ctls: Option<Vec<libasi::ASIControlType>>) {
+        info!("Starting capture video frames");
 
        self.start_video_capture(); 
 
        let img_type = self.get_img_type();
-
-       for i in 0..5{
+       let mut n_capture=  0;
+       let mut n_dropped=  0;
+       while n_capture < 10 { 
+        
             std::thread::sleep(std::time::Duration::from_secs_f32(0.5));
 
-            // auto adust by each control type
-            for i in 0..ctl_types.len() {
-                self.auto_adjust_ctl_value(ctl_types[i]) ;
+            // whether control value auto adjust 
+            if let Some(ctl_typs) = &auto_adjust_ctls {
+                // auto adust by each control type
+                for &ctl_typ in ctl_typs {
+                    self.auto_adjust_ctl_value(ctl_typ);
+                }
+            } else {
+                info!("Not setting auto adjust control value");
             }
 
             // recommended wait(ms) time in official docs
             let wait_ms : i32 = (self.get_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE).value/1000) as i32 * 2 + 500;
-            let buf= self.get_video_data(wait_ms);
-            let dyn_img = self.buf_to_img(buf, img_type);
-           // utils::save_img(dyn_img, "png");
+            let data = self.get_video_data(None,wait_ms);
+            //let dyn_img = self.buf_to_img(buf, img_type);
+            //self.save_img(dyn_img, "png");
+
+
+            n_dropped = self.get_dropeed_frame();
+            info!("cumulative total of drop frame {}\n",n_dropped);
+
+            n_capture += 1;
 
        }
         std::thread::sleep(std::time::Duration::from_secs_f32(1.0));
        self.stop_video_capture();
+        info!("Stopped capture video frame");
 
     }
 
 
-    fn buf_to_img(&self,buffer:BufType, img_type : libasi::ASIImgType) -> DynamicImage {
-
-        let width = self.roi.width as u32;
-        let height= self.roi.height as u32;
-     // convert to image by image type (RAW8,RAW8,RGB24,Y8)
-        let dyn_img  = match img_type{
-            libasi::ASI_IMG_TYPE_ASI_IMG_RGB24=> DynamicImage::ImageRgb8(image::RgbImage::from_raw(width, height, buffer.to_vec()).unwrap()),
-            _ => panic!("Not supoorted image type")
-
-            };
-    dyn_img
-
-}
+   
 
     /// Auto adjust value of givien control typej
     fn auto_adjust_ctl_value(&self,ctl_type:libasi::ASIControlType) {
@@ -343,9 +366,6 @@ impl CameraService for Camera{
         }
         // set is_auto to true
         self.set_ctl_value(ctl_type , caps.DefaultValue, libasi::ASI_BOOL_ASI_TRUE );
-        // init min value for each ctl type 
-            
-
 
         let mut prev_v = self.get_ctl_value(ctl_type).value; 
         let mut prev_df = self.get_dropeed_frame();
@@ -356,40 +376,68 @@ impl CameraService for Camera{
             let v= self.get_ctl_value(ctl_type).value;
             let df = self.get_dropeed_frame();
             if df == prev_df { continue;}
-            if num::abs(prev_v - v) <= 1{
+            if prev_v - v == 0{
                 n_match+=1;
             }
             prev_v = v;
             prev_df = df;
 
         }
-        info!("control value updated to {:?}",prev_v);
-        println!("control value updated to {:?}",prev_v);
+        info!("Control type {} value updated to {}",ctl_type,prev_v);
 
         
     }
-
-    fn get_video_data(&self, wait_ms : i32) -> BufType {
-        let buf_size = self.get_buffer_size();
-        let mut buf = utils::create_buffer(buf_size);
-        let mut pbuf = buf.as_mut_ptr();
-        libasi::_get_video_data(self.id,pbuf,buf_size,wait_ms  );
-        buf
-    }
-    fn get_data_after_exposure(&self)->BufType {
-        
-        let buf_size = self.get_buffer_size();
-        let mut buf = utils::create_buffer(buf_size);
-        let mut pbuf = buf.as_mut_ptr();
-        libasi::_get_data_after_exp(self.id,pbuf,buf_size);
-        buf
-    }
-
-
-
-        
 
 }
+
+impl ImageProcessor for Camera {
+    fn save_img(&self,dyn_img : DynamicImage, extention : &str )  {
+        // TODO 
+        // supoorte FITS extentino
+        let ext = match extention{
+            "jpg"=> image::ImageFormat::Jpeg,
+            "png"=> image::ImageFormat::Png,
+            _ => panic!("Not supported image extension")
+            };
+        let output_path = utils::generate_filename(extention);
+        match dyn_img.save_with_format(output_path.clone(), ext) {
+            Ok(()) => info!("Saved image successfly {}", output_path),
+            Err(e) => panic!("Failed to save image : {}",e)
+        }
+    }
+    fn buf_to_img(&self,buffer:BufType, img_type : libasi::ASIImgType) -> DynamicImage {
+
+        let width = self.roi.width as u32;
+        let height= self.roi.height as u32;
+     // convert to image by image type (RAW8,RAW16,RGB24,Y8)
+        let dyn_img  = match img_type{
+            libasi::ASI_IMG_TYPE_ASI_IMG_RGB24=> DynamicImage::ImageRgb8(image::RgbImage::from_raw(width, height, buffer.to_vec()).unwrap()),
+            _ => panic!("Not supoorted image type")
+
+            };
+        dyn_img
+
+    }
+    fn get_buffer_size(&self) -> BufSize{
+
+        let roi = self.get_roi_format();
+        let mut buf_size : i64 = roi.width as i64 * roi.height as i64;
+
+        buf_size = match roi.img_type {
+            libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 => buf_size * 2,
+            libasi::ASI_IMG_TYPE_ASI_IMG_RGB24 => buf_size * 3,
+             _ => buf_size
+
+            };
+        buf_size
+
+    }
+
+    fn create_buffer(&self,buf_size: BufSize) -> BufType {
+        vec![0; buf_size as usize]
+    }
+}
+
 
 
 mod test{
@@ -398,7 +446,7 @@ mod test{
 
     #[test]
     fn test_snapshot_mode(){
-        
+        env_logger::init(); 
         let mut asi_camera = ASIDevices::new();
         let camera =  asi_camera.get_camera(0);
         for ctl in camera.ctlcaps_mapper.iter() {
@@ -410,17 +458,31 @@ mod test{
         camera.disable_dark_subtract();
         camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RAW8);
         println!("{:?}", camera.get_img_type());
-        camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE , 30000, 0);
+        camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE , 30, 0);
         println!("{:?}", camera.get_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE ));
         camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
         println!("{:?}", camera.get_img_type());
-        camera.capture();
+        camera.snapshot();
         camera.close();
 
 
     }
+    #[test]
     fn test_video_mode(){
+        let mut asi_camera = ASIDevices::new();
+        let camera =  asi_camera.get_camera(0);
 
+        camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
+                         camera.ctlcaps_mapper.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
+        camera.disable_dark_subtract();
+        camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
+        println!("{:?}", camera.get_img_type());
+
+       let exp_type = libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE;
+       let gain_type = libasi::ASI_CONTROL_TYPE_ASI_GAIN;
+       let ctl_types = vec![exp_type, gain_type];
+        //camera.capture_video_frame(Some(ctl_types));
+        camera.close();
     }
 
 }

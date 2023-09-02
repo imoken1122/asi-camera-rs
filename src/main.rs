@@ -1,12 +1,14 @@
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 mod camera;
 mod libasi;
 use camera::*;
 mod utils;
-use env_logger;
-use log::{error, warn, info, debug};
 
 fn main() {
         env_logger::init();
+
         // ASIDevices object mutable variable camera object shoud be mutable
         let mut asi_camera = ASIDevices::new();
         let camera =  asi_camera.get_camera(0);
@@ -21,7 +23,7 @@ fn main() {
        let exp_type = libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE;
        let gain_type = libasi::ASI_CONTROL_TYPE_ASI_GAIN;
        let ctl_types = vec![exp_type, gain_type];
-        camera.capture_video_frame(ctl_types);
+        camera.capture_video_frame( Some(ctl_types));
         camera.close();
 }
 

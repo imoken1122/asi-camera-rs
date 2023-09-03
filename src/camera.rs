@@ -124,7 +124,7 @@ impl Camera{
     pub fn new(camera_idx : i32) -> Self{
         // assigning connected camera_i property to camera_info
         let camera_info = libasi::_get_camera_prop( camera_idx);
-        println!("{:?}",camera_info);
+        camera_info.display_info();
 
         let camera_id = camera_info.CameraID;
         let mut camera = Camera{
@@ -356,7 +356,7 @@ impl CameraService for Camera{
 
 
             n_dropped = self.get_dropeed_frame();
-            info!("cumulative total of drop frame {}\n",n_dropped);
+            debug!("cumulative total of drop frame {}\n",n_dropped);
 
             n_capture += 1;
 
@@ -399,7 +399,7 @@ impl CameraService for Camera{
             prev_df = df;
 
         }
-        info!("Control type {} value updated to {}",ctl_type,prev_v);
+        debug!("Control type {} value updated to {}",ctl_type,prev_v);
 
         
     }

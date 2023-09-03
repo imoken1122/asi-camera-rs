@@ -12,6 +12,8 @@ use image::DynamicImage;
 use core::panic;
 use std::collections::HashMap;
 use crate::libasi;
+use std::fs::File;
+use std::io::Write;
 
 pub type BufSize = i64;
 pub type BufType = Vec<u8>;
@@ -115,6 +117,7 @@ pub trait CameraService{
 }
 pub trait ImageProcessor{
     fn save_img(&self,dyn_img: DynamicImage , extention : &str);
+    fn save_buffer(&self, buf : BufType );
     fn create_buffer(&self, buf_size:BufSize) -> BufType;
     fn buf_to_img(&self,buffer:BufType, img_type : libasi::ASIImgType) -> DynamicImage;
     fn get_buffer_size(&self,) -> BufSize;
@@ -325,7 +328,7 @@ impl CameraService for Camera{
         self.stop_exposure();
 
     }
-    /// auto_adjust_ctls : 
+    /// 
     fn capture_video_frame(&self,auto_adjust_ctls: Option<Vec<libasi::ASIControlType>>) {
         info!("Starting capture video frames");
 
@@ -333,7 +336,6 @@ impl CameraService for Camera{
 
        let img_type = self.get_img_type();
        let mut n_capture=  0;
-       let mut n_dropped=  0;
        while n_capture < 10 { 
         
             std::thread::sleep(std::time::Duration::from_secs_f32(0.5));
@@ -350,12 +352,13 @@ impl CameraService for Camera{
 
             // recommended wait(ms) time in official docs
             let wait_ms : i32 = (self.get_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE).value/1000) as i32 * 2 + 500;
-            let data = self.get_video_data(None,wait_ms);
+            let data = self.get_video_data(None,wait_ms).unwrap();
+            //self.save_buffer(data);
             //let dyn_img = self.buf_to_img(buf, img_type);
             //self.save_img(dyn_img, "png");
 
 
-            n_dropped = self.get_dropeed_frame();
+            let n_dropped = self.get_dropeed_frame();
             debug!("cumulative total of drop frame {}\n",n_dropped);
 
             n_capture += 1;
@@ -421,6 +424,22 @@ impl ImageProcessor for Camera {
             Err(e) => panic!("Failed to save image : {}",e)
         }
     }
+    fn save_buffer(&self ,buf : BufType ) {
+        let name = utils::generate_filename("raw");
+        let mut file = match File::create(name){
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("Failed to create file : {:?}", e);
+                return;
+            }
+        };
+    
+        // バッファの内容をファイルに書き込む
+        match file.write_all(&buf) {
+            Ok(_) => println!("Saved buffer"),
+            Err(e) => eprintln!("Failed to save buffer {:?}", e),
+        }
+    }
     fn buf_to_img(&self,buffer:BufType, img_type : libasi::ASIImgType) -> DynamicImage {
         let roi = self.get_roi_format();
         let width = roi.width as u32;
@@ -458,7 +477,6 @@ impl ImageProcessor for Camera {
 
 mod test{
 
-    use std::sync::Arc;
 
     use super::*;
 
@@ -490,7 +508,7 @@ mod test{
         env_logger::init(); 
         let mut asi_camera = ASIDevices::new();
 
-        // Camera 1 SettingS
+        // Camera 1 Setting
         // setting control value of camera 1
         let camera =  asi_camera.get_camera(0);
         

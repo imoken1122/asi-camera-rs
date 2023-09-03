@@ -3,22 +3,42 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-
+use std::thread;
 use num;
 use crate::utils;
-
+use std::sync::{Arc, RwLock };
 use image;
 use image::DynamicImage;
 use core::panic;
 use std::collections::HashMap;
-use crate::{libasi::{self as libasi, _ASI_CAMERA_INFO, _ASI_CONTROL_CAPS, ROIFormat, ControlState, ASIBool, _get_supported_mode, ASI_CONTROL_TYPE, ASIControlValue}, camera};
+use crate::libasi;
 
 pub type BufSize = i64;
 pub type BufType = Vec<u8>;
 
+#[derive(Debug, Copy, Clone)]
+pub struct ROIFormat{
+    pub camera_id : i32,
+    pub width : i32,
+    pub height : i32,
+    pub bin : i32,
+    pub img_type : i32
+
+}
+impl ROIFormat { 
+    pub fn new() -> Self{
+        ROIFormat { camera_id: 0, width: 0, height: 0, bin: 0, img_type: 0 }
+    }
+}
+#[derive(Debug, Copy, Clone)]
+pub struct ControlState{
+    pub value : libasi::ASIControlValue,
+    pub is_auto : libasi::ASIBool,
+
+} 
 #[derive(Debug,Clone)]
 pub struct ASIDevices{
-    pub devices: Vec<Camera>
+    pub devices: Vec<Arc<RwLock<Camera>>>
 } 
 impl ASIDevices {
     pub fn new() ->  Self{
@@ -31,12 +51,12 @@ impl ASIDevices {
         let mut devices= vec![];
         for i in 0..num_camera{
             let camera = Camera::new(i);
-            devices.push(camera);
+            devices.push( Arc::new(RwLock::new(camera)));
         }
-         Self{devices }
+         Self{ devices } 
 
     }
-    pub fn get_camera(&mut self, camera_idx : i32) -> &mut Camera {
+    pub fn get_camera(&mut self, camera_idx : i32) -> &mut Arc<RwLock<Camera >>{
         match self.devices.len()> camera_idx as usize{
             true => &mut self.devices[camera_idx as usize],
             false => panic!("Invaild index : index out bound {}",camera_idx)
@@ -52,9 +72,8 @@ impl ASIDevices {
 pub struct Camera {
     pub idx: i32,
     pub id: i32,
-    pub info : _ASI_CAMERA_INFO,
+    pub info : libasi::_ASI_CAMERA_INFO,
     pub ctype2caps: HashMap<libasi::ASIControlType, libasi::_ASI_CONTROL_CAPS>,
-    pub roi : ROIFormat
 
 }
 
@@ -73,15 +92,15 @@ pub trait CameraControl{
     fn get_num_of_controls(&self,) -> i32;
     fn get_ctl_caps_by_idx(&self,ctl_idx:i32) -> libasi::_ASI_CONTROL_CAPS;
     fn get_ctl_caps(&self, ctl_type:libasi::ASIControlType) -> libasi::_ASI_CONTROL_CAPS;
-    fn get_roi_format(&self )->libasi::ROIFormat;
-    fn set_roi_format(&mut self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType);
-    fn get_ctl_value(&self,  ctl_type : libasi::ASIControlType) -> libasi::ControlState;
+    fn get_roi_format(&self )->ROIFormat;
+    fn set_roi_format(&self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType);
+    fn get_ctl_value(&self,  ctl_type : libasi::ASIControlType) -> ControlState;
     fn set_ctl_value(&self, ctl_type : libasi::ASIControlType, value : libasi::ASIControlValue, is_auto: libasi::ASIBool);
     fn get_mode(&self, )->libasi::ASICameraMode;
     fn get_supported_mode(&self,) -> libasi::_ASI_SUPPORTED_MODE;
     fn get_position_of_roi(&self) -> Vec<i32>;
 
-    fn set_img_type(&mut self,img_type : libasi::ASIImgType); 
+    fn set_img_type(&self,img_type : libasi::ASIImgType); 
     fn get_img_type(&self) -> libasi::ASIImgType;
     fn get_dropeed_frame(&self,)->i32;
     fn get_video_data(&self,pbuf : Option<*mut u8>, wait_ms:i32) -> Option<BufType>; 
@@ -113,7 +132,7 @@ impl Camera{
                                     idx: camera_idx, 
                                     info : camera_info,
                                     ctype2caps: HashMap::new(),
-                                    roi : libasi::ROIFormat::new()
+                                    
         };
 
         camera.open();
@@ -125,7 +144,6 @@ impl Camera{
             let ctl_cpas =camera.get_ctl_caps_by_idx(ctl_idx);
             camera.ctype2caps.insert( ctl_cpas.ControlType, ctl_cpas);
         }
-        camera.roi = camera.get_roi_format();
 
         camera
 
@@ -165,7 +183,7 @@ impl CameraControl for Camera{
     fn disable_dark_subtract(&self) {
         libasi::_disable_dark_subtract(self.id);
     }
-    fn get_roi_format(&self ) -> libasi::ROIFormat{
+    fn get_roi_format(&self ) -> ROIFormat{
         let camera_id = self.id;
 
         let mut width : i32 = 0;
@@ -199,15 +217,14 @@ impl CameraControl for Camera{
         num_of_ctls
 
     }
-    fn set_roi_format(&mut self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType){
+    fn set_roi_format(&self,  width : i32, height:i32, bin : i32, img_type : libasi::ASIImgType){
         libasi::_set_roi_format(self.id, width, height, bin, img_type);
-        self.roi = ROIFormat{camera_id : self.id,width, height, bin,img_type};
     }
-    fn get_ctl_value(&self, ctl_type : libasi::ASIControlType) -> libasi::ControlState{
+    fn get_ctl_value(&self, ctl_type : libasi::ASIControlType) -> ControlState{
         let mut value : libasi::ASIControlValue = 0;
         let mut is_auto : libasi::ASIBool = 0;
         libasi::_get_ctl_value(self.id, ctl_type, &mut value, is_auto);
-        libasi::ControlState{value, is_auto}
+        ControlState{value, is_auto}
         
     }
     fn set_ctl_value(&self,ctl_type : libasi::ASIControlType, value : libasi::ASIControlValue, is_auto : libasi::ASIBool) {
@@ -230,10 +247,9 @@ impl CameraControl for Camera{
         libasi::_get_position_of_roi(self.id, &mut x, &mut y);
         vec![x,y]
     }
-    fn set_img_type(&mut self,img_type : libasi::ASIImgType) {
+    fn set_img_type(&self,img_type : libasi::ASIImgType) {
         let roi = self.get_roi_format();
         libasi::_set_roi_format(self.id, roi.width, roi.height, roi.bin, img_type);
-        self.roi.img_type = img_type;
     }
     fn get_img_type(&self) -> libasi::ASIImgType {
         let roi = self.get_roi_format();
@@ -406,9 +422,9 @@ impl ImageProcessor for Camera {
         }
     }
     fn buf_to_img(&self,buffer:BufType, img_type : libasi::ASIImgType) -> DynamicImage {
-
-        let width = self.roi.width as u32;
-        let height= self.roi.height as u32;
+        let roi = self.get_roi_format();
+        let width = roi.width as u32;
+        let height= roi.height as u32;
      // convert to image by image type (RAW8,RAW16,RGB24,Y8)
         let dyn_img  = match img_type{
             libasi::ASI_IMG_TYPE_ASI_IMG_RGB24=> DynamicImage::ImageRgb8(image::RgbImage::from_raw(width, height, buffer.to_vec()).unwrap()),
@@ -442,13 +458,16 @@ impl ImageProcessor for Camera {
 
 mod test{
 
+    use std::sync::Arc;
+
     use super::*;
 
     #[test]
     fn test_snapshot_mode(){
         env_logger::init(); 
         let mut asi_camera = ASIDevices::new();
-        let camera =  asi_camera.get_camera(0);
+        let camera =  asi_camera.get_camera(0).read().unwrap();
+
         for ctl in camera.ctype2caps.iter() {
                 println!("{:?} : {:?}", ctl.0, ctl.1.DefaultValue);
         }
@@ -456,7 +475,6 @@ mod test{
         camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
                          camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
         camera.disable_dark_subtract();
-        camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RAW8);
         println!("{:?}", camera.get_img_type());
         camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE , 30, 0);
         println!("{:?}", camera.get_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE ));
@@ -469,20 +487,37 @@ mod test{
     }
     #[test]
     fn test_video_mode(){
+        env_logger::init(); 
         let mut asi_camera = ASIDevices::new();
+
+        // Camera 1 SettingS
+        // setting control value of camera 1
         let camera =  asi_camera.get_camera(0);
+        
+        // camera variable is wraped Arc, it must be unwrapped using read() of write()
+        camera.read().unwrap().disable_dark_subtract();
+        camera.read().unwrap().set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
 
-        camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
-                         camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
-        camera.disable_dark_subtract();
-        camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
-        println!("{:?}", camera.get_img_type());
-
+        // auto adjust control types
        let exp_type = libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE;
        let gain_type = libasi::ASI_CONTROL_TYPE_ASI_GAIN;
-       let ctl_types = vec![exp_type, gain_type];
-        //camera.capture_video_frame(Some(ctl_types));
-        camera.close();
+       let ctl_types = Some(vec![exp_type, gain_type]);
+        
+        let mut threads = vec![];
+        // capture video frmae  using thread
+        let c= Arc::clone( &camera);
+        threads.push(thread::spawn( move || {
+            c.read().unwrap().capture_video_frame(ctl_types);
+        }));
+
+        // Set up camera 2 and beyond as in the settings above.
+        //
+        //
+
+
+
+        // sync all threads
+        threads.into_iter().for_each(|t|t.join().unwrap());
     }
 
 }

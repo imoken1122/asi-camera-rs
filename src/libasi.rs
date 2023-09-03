@@ -3,7 +3,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 //#![allow(improper_ctypes)]
-use ringbuffer::{AllocRingBuffer, RingBuffer};
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 //use log::error;
@@ -43,7 +42,7 @@ fn check_error_code(code: i32) {
         9 => panic!("ASI_ERROR_INVALID_IMGTYPE"), //unsupported image formate
         10 => panic!("ASI_ERROR_OUTOF_BOUNDARY"), //the startpos is out of boundary
         // Communication timeout
-        11 => error!("ASI_ERROR_TIMEOUT"),
+        11 => panic!("ASI_ERROR_TIMEOUT"),
         12 => panic!("ASI_ERROR_INVALID_SEQUENCE"), //stop capture first!
         13 => panic!("ASI_ERROR_BUFFER_TOO_SMALL"), //buffer size is not big enough
         14 => panic!("ASI_ERROR_VIDEO_MODE_ACTIVE"),
@@ -55,26 +54,6 @@ fn check_error_code(code: i32) {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct ROIFormat{
-    pub camera_id : i32,
-    pub width : i32,
-    pub height : i32,
-    pub bin : i32,
-    pub img_type : i32
-
-}
-impl ROIFormat { 
-    pub fn new() -> Self{
-        ROIFormat { camera_id: 0, width: 0, height: 0, bin: 0, img_type: 0 }
-    }
-}
-#[derive(Debug, Copy, Clone)]
-pub struct ControlState{
-    pub value : ASIControlValue,
-    pub is_auto : ASIBool,
-
-} 
 impl _ASI_CAMERA_INFO {
     pub fn new() -> Self{
         Self{
@@ -277,10 +256,7 @@ pub fn _get_roi_format(camera_id :i32,width:&mut i32,height : &mut i32,bin : &mu
 /// - `ASI_ERROR_INVALID_IMGTYPE`: Unsupported image format. Make sure i_width, i_height, and binning are set correctly.
 ///
 pub fn _set_roi_format(camera_id : i32, width: i32, height : i32, bin : i32, img_type : ASIImgType){
-    // TODO
-    // 
-
-
+    
     check_error_code(unsafe{ASISetROIFormat(camera_id, width,height, bin,img_type)})
 }
 pub fn _get_position_of_roi(camera_id : i32 , x : &mut i32, y : &mut i32){

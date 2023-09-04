@@ -25,6 +25,8 @@ MacOS
 
 Official recommended order of function calls
 
+An example implementations [snapshot_mode.rs](./examples/snapshot_mode.rs) and [video_mode.rs](./examples/video_mode.rs) is implemented according to the following order.
+
 __1. Initialize__
 
 1. ASIGetNumOfConnectedCameras: Get the count of connected cameras.

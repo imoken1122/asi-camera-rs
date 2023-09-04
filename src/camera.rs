@@ -2,7 +2,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-
 use std::thread;
 use num;
 use crate::utils;
@@ -75,7 +74,7 @@ pub struct Camera {
     pub idx: i32,
     pub id: i32,
     pub info : libasi::_ASI_CAMERA_INFO,
-    pub ctype2caps: HashMap<libasi::ASIControlType, libasi::_ASI_CONTROL_CAPS>,
+    pub ctype2caps: HashMap<libasi::ASIControlType, libasi::ASI_CONTROL_CAPS>,
 
 }
 
@@ -457,7 +456,8 @@ impl ImageProcessor for Camera {
 
         let roi = self.get_roi_format();
         let mut buf_size : i64 = roi.width as i64 * roi.height as i64;
-
+        
+        // IMG_RAW8 and IMG_Y8 is 1 byte, same size with w*h
         buf_size = match roi.img_type {
             libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 => buf_size * 2,
             libasi::ASI_IMG_TYPE_ASI_IMG_RGB24 => buf_size * 3,
@@ -473,69 +473,3 @@ impl ImageProcessor for Camera {
     }
 }
 
-
-
-mod test{
-
-
-    use super::*;
-
-    #[test]
-    fn test_snapshot_mode(){
-        env_logger::init(); 
-        let mut asi_camera = ASIDevices::new();
-        let camera =  asi_camera.get_camera(0).read().unwrap();
-
-        for ctl in camera.ctype2caps.iter() {
-                println!("{:?} : {:?}", ctl.0, ctl.1.DefaultValue);
-        }
-
-        camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
-                         camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
-        camera.disable_dark_subtract();
-        println!("{:?}", camera.get_img_type());
-        camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE , 30, 0);
-        println!("{:?}", camera.get_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE ));
-        camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
-        println!("{:?}", camera.get_img_type());
-        camera.snapshot();
-        camera.close();
-
-
-    }
-    #[test]
-    fn test_video_mode(){
-        env_logger::init(); 
-        let mut asi_camera = ASIDevices::new();
-
-        // Camera 1 Setting
-        // setting control value of camera 1
-        let camera =  asi_camera.get_camera(0);
-        
-        // camera variable is wraped Arc, it must be unwrapped using read() of write()
-        camera.read().unwrap().disable_dark_subtract();
-        camera.read().unwrap().set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
-
-        // auto adjust control types
-       let exp_type = libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE;
-       let gain_type = libasi::ASI_CONTROL_TYPE_ASI_GAIN;
-       let ctl_types = Some(vec![exp_type, gain_type]);
-        
-        let mut threads = vec![];
-        // capture video frmae  using thread
-        let c= Arc::clone( &camera);
-        threads.push(thread::spawn( move || {
-            c.read().unwrap().capture_video_frame(ctl_types);
-        }));
-
-        // Set up camera 2 and beyond as in the settings above.
-        //
-        //
-
-
-
-        // sync all threads
-        threads.into_iter().for_each(|t|t.join().unwrap());
-    }
-
-}

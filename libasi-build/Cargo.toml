@@ -1,0 +1,15 @@
+[package]
+name = "libasi-build"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name="libasi_build"
+path = "lib.rs"
+
+[dependencies]
+log = "0.4.20"
+libc = "0.2"
+
+[build-dependencies]
+bindgen = "0.66.1"

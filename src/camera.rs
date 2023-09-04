@@ -300,6 +300,7 @@ impl CameraControl for Camera{
 impl CameraService for Camera{
     fn snapshot(&self ) { 
         // starting exposure
+        info!("Starting exposure");
         self.start_exposure(0);
 
         // Loop until exposure time ends. (status is working)
@@ -307,11 +308,11 @@ impl CameraService for Camera{
             std::thread::sleep(std::time::Duration::from_millis(50));
 
         }
-        let exp_status  = self.get_exposure_status();
 
+        let exp_status  = self.get_exposure_status();
         match exp_status { 
-            libasi::ASI_EXPOSURE_STATUS_ASI_EXP_SUCCESS =>  info!(""),
-            other => panic!("exposure status is {}",other) 
+            libasi::ASI_EXPOSURE_STATUS_ASI_EXP_SUCCESS =>  info!("Successfly exposure"),
+            other => panic!("Failed to snapshot. exposure status is {}",other) 
         }
 
         // Acquire data after exposure
@@ -325,6 +326,7 @@ impl CameraService for Camera{
         self.save_img(dyn_img, "png");
 
         self.stop_exposure();
+        info!("Stopped  exposure");
 
     }
     /// 
@@ -419,7 +421,7 @@ impl ImageProcessor for Camera {
             };
         let output_path = utils::generate_filename(extention);
         match dyn_img.save_with_format(output_path.clone(), ext) {
-            Ok(()) => info!("Saved image successfly {}", output_path),
+            Ok(()) => info!("Image saved to {}", output_path),
             Err(e) => panic!("Failed to save image : {}",e)
         }
     }
@@ -456,7 +458,7 @@ impl ImageProcessor for Camera {
 
         let roi = self.get_roi_format();
         let mut buf_size : i64 = roi.width as i64 * roi.height as i64;
-        
+
         // IMG_RAW8 and IMG_Y8 is 1 byte, same size with w*h
         buf_size = match roi.img_type {
             libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 => buf_size * 2,

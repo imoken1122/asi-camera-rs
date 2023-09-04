@@ -26,25 +26,25 @@ impl _ASI_CAMERA_INFO {
     }
     pub fn display_info(&self) {
         let a : Vec<u8>= self.Name.iter().map(|&x| x as u8).collect();
-        info!("Camera Info : ");
-        info!("Name: {:?}", String::from_utf8_lossy(&a));
-        info!("CameraID: {}", self.CameraID);
-        info!("MaxHeight: {}", self.MaxHeight);
-        info!("MaxWidth: {}", self.MaxWidth);
-        info!("IsColorCam: {}", self.IsColorCam);
-        info!("BayerPattern: {}", self.BayerPattern);
-        info!("SupportedBins: {:?}", &self.SupportedBins[..15]);
-        info!("SupportedVideoFormat: {:?}", &self.SupportedVideoFormat[..7]);
-        info!("PixelSize: {}", self.PixelSize);
-        info!("MechanicalShutter: {}", self.MechanicalShutter);
-        info!("ST4Port: {}", self.ST4Port);
-        info!("IsCoolerCam: {}", self.IsCoolerCam);
-        info!("IsUSB3Host: {}", self.IsUSB3Host);
-        info!("IsUSB3Camera: {}", self.IsUSB3Camera);
-        info!("ElecPerADU: {}", self.ElecPerADU);
-        info!("BitDepth: {}", self.BitDepth);
-        info!("IsTriggerCam: {}", self.IsTriggerCam);
-        info!("");
+        info!("===== Camera Info ======\n");
+        info!("  Name: {:?}", String::from_utf8_lossy(&a));
+        info!("  CameraID: {}", self.CameraID);
+        info!("  MaxHeight: {}", self.MaxHeight);
+        info!("  MaxWidth: {}", self.MaxWidth);
+        info!("  IsColorCam: {}", self.IsColorCam);
+        info!("  BayerPattern: {}", self.BayerPattern);
+        info!("  SupportedBins: {:?}", &self.SupportedBins[..15]);
+        info!("  SupportedVideoFormat: {:?}", &self.SupportedVideoFormat[..7]);
+        info!("  PixelSize: {}", self.PixelSize);
+        info!("  MechanicalShutter: {}", self.MechanicalShutter);
+        info!("  ST4Port: {}", self.ST4Port);
+        info!("  IsCoolerCam: {}", self.IsCoolerCam);
+        info!("  IsUSB3Host: {}", self.IsUSB3Host);
+        info!("  IsUSB3Camera: {}", self.IsUSB3Camera);
+        info!("  ElecPerADU: {}", self.ElecPerADU);
+        info!("  BitDepth: {}", self.BitDepth);
+        info!("  IsTriggerCam: {}", self.IsTriggerCam);
+        info!("======================\n");
     }
 }
 

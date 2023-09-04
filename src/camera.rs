@@ -45,9 +45,9 @@ impl ASIDevices {
     pub fn new() ->  Self{
         
         let num_camera= libasi::_get_num_of_connected_cameras();
-        println!("num of camera devices {}", num_camera);
+        info!("Num of camera devices {}", num_camera);
         if num_camera == 0{
-            panic!("no connected cameras");
+            panic!("Not exist to connected cameras");
         }
         let mut devices= vec![];
         for i in 0..num_camera{
@@ -141,7 +141,7 @@ impl Camera{
         camera.init();
 
         let num_of_ctls = camera.get_num_of_controls();
-        println!("num of control parameters {}",num_of_ctls);
+        info!("Num of control types {}",num_of_ctls);
         for ctl_idx in 0..num_of_ctls{
             let ctl_cpas =camera.get_ctl_caps_by_idx(ctl_idx);
             camera.ctype2caps.insert( ctl_cpas.ControlType, ctl_cpas);
@@ -337,9 +337,11 @@ impl CameraService for Camera{
 
        let img_type = self.get_img_type();
        let mut n_capture=  0;
+
+       // Num of capture
        while n_capture < 10 { 
         
-            std::thread::sleep(std::time::Duration::from_secs_f32(0.5));
+            //std::thread::sleep(std::time::Duration::from_secs_f32(0.5));
 
             // whether control value auto adjust 
             if let Some(ctl_typs) = &auto_adjust_ctls {
@@ -367,6 +369,7 @@ impl CameraService for Camera{
        }
         std::thread::sleep(std::time::Duration::from_secs_f32(1.0));
        self.stop_video_capture();
+        info!("{} frame captured", n_capture);
         info!("Stopped capture video frame");
 
     }

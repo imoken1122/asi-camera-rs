@@ -4,13 +4,13 @@
 
  This repository is a simplified Rust binding of Zwo ASI Camera driver.
  
-The C library of the ASICamera driver is distributed here.
+The ASI Camera SDK is distributed [here](https://www.zwoastro.com/downloads/developers).
 (This driver does not yet support MacOS Apple silicon.)
 
 Currently only MacOS Apple silicon M2 ( Rosseta2 mode ) has been tested.
 Other OS (Linux, Windows, RasPi) have not been tested because I don't have native environment.
 
-### Usage
+### Run
 
 MacOS
 ```zsh

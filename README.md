@@ -10,7 +10,9 @@ The ASI Camera SDK is distributed [here](https://www.zwoastro.com/downloads/deve
 Currently only MacOS Apple silicon M2 ( Rosseta2 mode ) has been tested.
 Other OS (Linux, Windows, RasPi) have not been tested because I don't have native environment.
 
-### Run
+## Run
+
+First connect the ASI Camera using USB
 
 MacOS
 ```zsh
@@ -20,7 +22,7 @@ MacOS
 ```
 
 
-### API call sequence
+## API call sequence
 
 
 Official recommended order of function calls

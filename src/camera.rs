@@ -355,10 +355,10 @@ impl CameraService for Camera{
 
             // recommended wait(ms) time in official docs
             let wait_ms : i32 = (self.get_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE).value/1000) as i32 * 2 + 500;
-            let data = self.get_video_data(None,wait_ms).unwrap();
+            let buf = self.get_video_data(None,wait_ms).unwrap();
             //self.save_buffer(data);
-            //let dyn_img = self.buf_to_img(buf, img_type);
-            //self.save_img(dyn_img, "png");
+            let dyn_img = self.buf_to_img(buf, img_type);
+            self.save_img(dyn_img, "png");
 
 
             let n_dropped = self.get_dropeed_frame();

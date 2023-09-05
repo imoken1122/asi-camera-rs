@@ -2,6 +2,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+use std::fmt::format;
 use std::thread;
 use num;
 use crate::utils;
@@ -10,7 +11,7 @@ use image;
 use image::DynamicImage;
 use core::panic;
 use std::collections::HashMap;
-use crate::libasi;
+use crate::libasi::{self, ASIImgType};
 use std::fs::File;
 use std::io::Write;
 
@@ -23,7 +24,7 @@ pub struct ROIFormat{
     pub width : i32,
     pub height : i32,
     pub bin : i32,
-    pub img_type : i32
+    pub img_type : libasi::ASIImgType
 
 }
 impl ROIFormat { 
@@ -116,10 +117,11 @@ pub trait CameraService{
 }
 pub trait ImageProcessor{
     fn save_img(&self,dyn_img: DynamicImage , extention : &str);
-    fn save_buffer(&self, buf : BufType );
+    fn save_buffer(&self, buf : BufType, extention : &str );
     fn create_buffer(&self, buf_size:BufSize) -> BufType;
     fn buf_to_img(&self,buffer:BufType, img_type : libasi::ASIImgType) -> DynamicImage;
     fn get_buffer_size(&self,) -> BufSize;
+    fn buf_to_fits(&self, buf : BufType) -> BufType;
 }
 
 impl Camera{
@@ -317,13 +319,22 @@ impl CameraService for Camera{
 
         // Acquire data after exposure
         let buf = self.get_data_after_exposure();
+       debug!("buffer size is {}", buf.len());
 
         // convert buffer to image format
        let img_type = self.get_img_type();
-        let dyn_img = self.buf_to_img(buf, img_type);
-
-        // save image
-        self.save_img(dyn_img, "png");
+       match img_type { 
+            libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 => {
+                let fits = self.buf_to_fits(buf);
+                // save buffer
+                self.save_buffer(fits,"fits");
+            },
+            _ =>{
+                let dyn_img = self.buf_to_img(buf, img_type);
+                // save image
+                //self.save_img(dyn_img, "png");
+            }
+       }
 
         self.stop_exposure();
         info!("Stopped  exposure");
@@ -428,9 +439,9 @@ impl ImageProcessor for Camera {
             Err(e) => panic!("Failed to save image : {}",e)
         }
     }
-    fn save_buffer(&self ,buf : BufType ) {
-        let name = utils::generate_filename("raw");
-        let mut file = match File::create(name){
+    fn save_buffer(&self ,buf : BufType,extention : &str ) {
+        let output_path = utils::generate_filename(extention);
+        let mut file = match File::create(&output_path){
             Ok(file) => file,
             Err(e) => {
                 eprintln!("Failed to create file : {:?}", e);
@@ -440,7 +451,7 @@ impl ImageProcessor for Camera {
     
         // バッファの内容をファイルに書き込む
         match file.write_all(&buf) {
-            Ok(_) => println!("Saved buffer"),
+            Ok(_) => info!("Buffer saved to  {}",output_path),
             Err(e) => eprintln!("Failed to save buffer {:?}", e),
         }
     }
@@ -450,7 +461,15 @@ impl ImageProcessor for Camera {
         let height= roi.height as u32;
      // convert to image by image type (RAW8,RAW16,RGB24,Y8)
         let dyn_img  = match img_type{
-            libasi::ASI_IMG_TYPE_ASI_IMG_RGB24=> DynamicImage::ImageRgb8(image::RgbImage::from_raw(width, height, buffer.to_vec()).unwrap()),
+            libasi::ASI_IMG_TYPE_ASI_IMG_RGB24=> DynamicImage::ImageRgb8(
+                                                    image::RgbImage::from_raw(
+                                                            width, 
+                                                            height,
+                                                             buffer.to_vec()).unwrap()),
+            libasi::ASI_IMG_TYPE_ASI_IMG_RAW8 => DynamicImage::ImageLuma8(
+                                                    image::GrayImage::from_raw(width, height,buffer.to_vec()).unwrap()),
+            
+
             _ => panic!("Not supoorted image type")
 
             };
@@ -472,9 +491,65 @@ impl ImageProcessor for Camera {
         buf_size
 
     }
-
     fn create_buffer(&self,buf_size: BufSize) -> BufType {
         vec![0; buf_size as usize]
+    }
+
+    /// buffer convert to fits format 
+    fn buf_to_fits(&self,buf : BufType) -> BufType {
+        // amount of padding
+        fn padding(n:usize ) -> usize{
+            match n % 2880 {
+                0 => 0,
+                a => 2880 - a
+            }
+        }
+
+        let mut fits = Vec::new();
+        let roi = self.get_roi_format();
+        let img_t = roi.img_type;
+        
+        let (w, h) = (if roi.width < 1000 { format!(" {}", roi.width) } else { format!("{}", roi.width) }, 
+                                    if roi.height < 1000 { format!(" {}", roi.height) } else { format!("{}", roi.height) });
+
+        let bit = match img_t{
+                            libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 => "16",
+                            libasi::ASI_IMG_TYPE_ASI_IMG_RAW8 => " 8",
+                            _ => panic!("Fits format is not supported RGB format")
+                        };
+
+
+        // section number of row is 80
+        let header =
+                            [ "SIMPLE  =                    T / FITS standard                                  ",
+                                &("BITPIX  =                   ".to_owned()+bit+" / bits per pixel                                 "),
+                                "NAXIS   =                    2 / number of axis                                 ",
+                                &("NAXIS1   =                ".to_owned()+w.as_str()+" / length of data axis 1                          "),
+                                &("NAXIS2   =                ".to_owned()+h.as_str()+" / length of data axis 2                          "),
+                              "END                                                                             "
+                            ];
+
+        // header section
+         for h in header.into_iter(){
+            debug!("{}",h.len());
+            for b in h.as_bytes(){
+                fits.push(*b);
+            }
+         }
+
+        // length of header section and data section is 2880
+        // padding using empty(32) to 2880
+         for _ in 0..padding(fits.len()){
+            fits.push(32);
+         }
+
+         // data section 
+         for data in &buf{
+            fits.push(*data)
+         }
+        
+         fits
+
     }
 }
 

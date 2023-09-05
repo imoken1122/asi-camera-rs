@@ -12,7 +12,7 @@ Tested OS
 - MacOS Apple silicon M2 ( Rosseta2 ) 
 - Ubuntu 22.04 x86_64
 
-Other OS (Linux Windows, RasPi) and architecture  have not been tested because I don't have native environment.
+Other OS (Linux Windows, RasPi) and architecture  have not been tested.
 
 ## Run
 

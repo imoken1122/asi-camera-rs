@@ -11,7 +11,8 @@ fn main(){
                         camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);
     camera.disable_dark_subtract();
     camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_EXPOSURE , 30, 0);
-    camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
+    //camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RGB24);
+    camera.set_img_type(libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 );
     camera.snapshot();
     camera.close();
 

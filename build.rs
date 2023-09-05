@@ -43,6 +43,7 @@ fn set_dylib(archpath:String){
     //println!("cargo:rustc-link-arg=-Wl,-rpath,{}", libpath);
 
     println!("cargo:rustc-env=DYLD_LIBRARY_PATH={}",libpath);
+    println!("cargo:rustc-env=LD_LIBRARY_PATH={}",libpath);
     // Tell cargo to tell rustc to link the system bzip2
     // shared library.
     println!("cargo:rustc-link-lib=ASICamera2");

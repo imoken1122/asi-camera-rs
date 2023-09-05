@@ -7,18 +7,37 @@
 The ASI Camera SDK is distributed [here](https://www.zwoastro.com/downloads/developers).
 (This driver does not yet support MacOS Apple silicon.)
 
-Currently only MacOS Apple silicon M2 ( Rosseta2 mode ) has been tested.
-Other OS (Linux, Windows, RasPi) have not been tested because I don't have native environment.
+
+Tested OS
+- MacOS Apple silicon M2 ( Rosseta2 ) 
+- Ubuntu 22.04 x86_64
+
+Other OS (Linux Windows, RasPi) and architecture  have not been tested because I don't have native environment.
 
 ## Run
 
 First connect the ASI Camera using USB
 
-MacOS
+Linux
+
 ```zsh
+ RUST_LOG=debug cargo run -r --example snapshot_mode
+
+ RUST_LOG=debug cargo run -r --example video_mode
+```
+
+
+MacOS
+
+For MacOS, add  `--target x86_64-apple-darwin` 
+
+```zsh
+ 
+ rustup target add x86_64-apple-darwin
+
  RUST_LOG=debug cargo run -r --example snapshot_mode  --target x86_64-apple-darwin
 
- RUST_LOG=debug cargo run -r --example video_mode  --target x86_64-apple-darwin
+
 ```
 
 

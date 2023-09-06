@@ -4,8 +4,8 @@ use asi_camera_rs::camera::*;
 use asi_camera_rs::libasi;
 fn main(){
     env_logger::init();
-    let mut asi_camera = ASIDevices::new();
-    let camera =  asi_camera.get_camera(0).read().unwrap();
+    let  asi_camera = ASIDevices::new();
+    let camera =  asi_camera.get_camera(0);
 
     camera.set_ctl_value(libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD ,
                         camera.ctype2caps.get(&libasi::ASI_CONTROL_TYPE_ASI_BANDWIDTHOVERLOAD).unwrap().MinValue, 0);

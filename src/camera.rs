@@ -2,16 +2,12 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-use std::fmt::format;
-use std::thread;
-use num;
 use crate::utils;
-use std::sync::{Arc, RwLock };
 use image;
 use image::DynamicImage;
 use core::panic;
 use std::collections::HashMap;
-use crate::libasi::{self, ASIImgType};
+use crate::libasi;
 use std::fs::File;
 use std::io::Write;
 
@@ -38,10 +34,10 @@ pub struct ControlState{
     pub is_auto : libasi::ASIBool,
 
 } 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,)]
 pub struct ASIDevices{
-    pub devices: Vec<Arc<RwLock<Camera>>>
-} 
+    pub devices: Vec<Camera>
+}
 impl ASIDevices {
     pub fn new() ->  Self{
         
@@ -53,14 +49,14 @@ impl ASIDevices {
         let mut devices= vec![];
         for i in 0..num_camera{
             let camera = Camera::new(i);
-            devices.push( Arc::new(RwLock::new(camera)));
+            devices.push( camera);
         }
          Self{ devices } 
 
     }
-    pub fn get_camera(&mut self, camera_idx : i32) -> &mut Arc<RwLock<Camera >>{
+    pub fn get_camera(&self, camera_idx : i32) -> Camera {
         match self.devices.len()> camera_idx as usize{
-            true => &mut self.devices[camera_idx as usize],
+            true => self.devices[camera_idx as usize].clone(),
             false => panic!("Invaild index : index out bound {}",camera_idx)
         }
 
@@ -324,15 +320,17 @@ impl CameraService for Camera{
         // convert buffer to image format
        let img_type = self.get_img_type();
        match img_type { 
+            // RAW16
             libasi::ASI_IMG_TYPE_ASI_IMG_RAW16 => {
                 let fits = self.buf_to_fits(buf);
                 // save buffer
-                self.save_buffer(fits,"fits");
+                self.save_buffer(fits,"fit");
             },
+            // RGB24,RAW8
             _ =>{
                 let dyn_img = self.buf_to_img(buf, img_type);
                 // save image
-                //self.save_img(dyn_img, "png");
+                self.save_img(dyn_img, "png");
             }
        }
 
@@ -530,8 +528,10 @@ impl ImageProcessor for Camera {
                             ];
 
         // header section
-         for h in header.into_iter(){
-            debug!("{}",h.len());
+         for (i,h) in header.into_iter().enumerate(){
+            if h.len()!=80{
+               error!("length of header {} is {}, its must be 80.",i,h.len());
+            }
             for b in h.as_bytes(){
                 fits.push(*b);
             }
